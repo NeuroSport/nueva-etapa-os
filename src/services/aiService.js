@@ -2,11 +2,14 @@
  * Service to interact with the local backend (which proxies to Ollama)
  */
 
-const BACKEND_URL = "http://localhost:3001/api/ia";
+const getBackendUrl = () => {
+  const savedUrl = localStorage.getItem("ai_backend_url");
+  return savedUrl || "http://localhost:3001/api/ia";
+};
 
 export async function chatWithAI(messages) {
   try {
-    const response = await fetch(BACKEND_URL, {
+    const response = await fetch(getBackendUrl(), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -34,7 +37,7 @@ export async function chatWithAI(messages) {
  */
 export async function sendPrompt(prompt) {
   try {
-    const response = await fetch(BACKEND_URL, {
+    const response = await fetch(getBackendUrl(), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
