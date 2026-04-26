@@ -1,15 +1,35 @@
-import { useState } from "react";
-import Card from "../../components/Card";
-import { ShoppingCart, Plus, Trash2, CheckCircle, Circle, Tag, Euro, Star } from "lucide-react";
+import { Calendar } from "lucide-react";
+import CalendarQuickAdd from "../../components/CalendarQuickAdd";
 
 export default function ShoppingListPro({ data, setData }) {
   const [newItem, setNewItem] = useState({ item: "", category: "Supermercado", amount: "1", estimatedPrice: "" });
+  
+  // Estado para el modal de programación rápida
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [itemToSchedule, setItemToSchedule] = useState(null);
 
   const addItem = () => {
-    if (!newItem.item) return;
+    const itemName = newItem.item.trim();
+    if (!itemName) return alert("El nombre del producto es obligatorio");
+    if (itemName.length > 40) return alert("El nombre es demasiado largo");
+    
+    // PREVENCIÓN DE DUPLICADOS
+    const isDuplicate = data.shoppingListPro.some(i => 
+      !i.done && 
+      i.item.toLowerCase() === itemName.toLowerCase() && 
+      i.category === newItem.category
+    );
+
+    if (isDuplicate) {
+      if (!window.confirm("Este producto ya está en la lista. ¿Deseas añadirlo otra vez?")) {
+        return;
+      }
+    }
+
     const item = {
       id: crypto.randomUUID(),
       ...newItem,
+      item: itemName,
       estimatedPrice: parseFloat(newItem.estimatedPrice) || 0,
       frequent: false,
       done: false
@@ -31,11 +51,15 @@ export default function ShoppingListPro({ data, setData }) {
   };
 
   const removeItem = (id) => {
-    setData({
-      ...data,
-      shoppingListPro: data.shoppingListPro.filter(item => item.id !== id)
-    });
+    // PROTECCIÓN DE BORRADO
+    if (window.confirm("¿Seguro que quieres eliminar este producto?")) {
+      setData({
+        ...data,
+        shoppingListPro: data.shoppingListPro.filter(item => item.id !== id)
+      });
+    }
   };
+
 
   const toggleFrequent = (id) => {
     setData({
@@ -53,11 +77,29 @@ export default function ShoppingListPro({ data, setData }) {
     });
   };
 
+  const handleOpenSchedule = (item, e) => {
+    e.stopPropagation();
+    setItemToSchedule(item);
+    setShowQuickAdd(true);
+  };
+
+  const saveQuickEvent = (event) => {
+    setData({
+      ...data,
+      calendarEvents: [...(data.calendarEvents || []), event]
+    });
+  };
+
+  const isScheduled = (id) => {
+    return (data.calendarEvents || []).some(e => e.sourceType === 'shopping' && e.sourceId === id);
+  };
+
   const totalEstimated = data.shoppingListPro
     .filter(i => !i.done)
     .reduce((sum, i) => sum + i.estimatedPrice, 0);
 
   const categories = [...new Set(data.shoppingListPro.map(i => i.category))];
+
 
   return (
     <div className="page shopping-page">
@@ -65,7 +107,7 @@ export default function ShoppingListPro({ data, setData }) {
         <h1>Lista de Compra PRO</h1>
         <div className="total-estimate">
           <Euro size={18} />
-          <span>Pendiente: {totalEstimated.toFixed(2)}€</span>
+          <span>Pendiente: {data.settings?.privacyMode ? "•••,••" : totalEstimated.toFixed(2)}€</span>
         </div>
       </div>
 
@@ -113,7 +155,12 @@ export default function ShoppingListPro({ data, setData }) {
         
         {categories.sort().map(cat => (
           <div key={cat} className="category-section">
-            <h3><Tag size={16} /> {cat}</h3>
+            <div className="cat-header">
+              <h3><Tag size={16} /> {cat}</h3>
+              <button className="schedule-item-btn small" onClick={(e) => handleOpenSchedule({ item: `Compra: ${cat}`, category: 'Supermercado', id: `cat-${cat}` }, e)}>
+                <Calendar size={14} />
+              </button>
+            </div>
             <div className="items-list">
               {data.shoppingListPro.filter(i => i.category === cat).map(item => (
                 <div key={item.id} className={`shopping-item ${item.done ? 'done' : ''}`}>
@@ -122,11 +169,17 @@ export default function ShoppingListPro({ data, setData }) {
                   </button>
                   
                   <div className="item-details">
-                    <span className="item-name">{item.item}</span>
-                    <span className="item-meta">{item.amount} • {item.estimatedPrice}€</span>
+                    <div className="item-title-row">
+                      <span className="item-name">{data.settings?.privacyMode ? "••••••••" : item.item}</span>
+                      {isScheduled(item.id) && <div className="scheduled-badge min"><Calendar size={8}/></div>}
+                    </div>
+                    <span className="item-meta">{item.amount} • {data.settings?.privacyMode ? "•,••" : item.estimatedPrice}€</span>
                   </div>
 
                   <div className="item-actions">
+                    <button className="action-schedule-btn" onClick={(e) => handleOpenSchedule(item, e)}>
+                      <Calendar size={16} />
+                    </button>
                     <button 
                       className={`freq-btn ${item.frequent ? 'active' : ''}`}
                       onClick={() => toggleFrequent(item.id)}
@@ -143,6 +196,18 @@ export default function ShoppingListPro({ data, setData }) {
           </div>
         ))}
       </div>
+
+      <CalendarQuickAdd 
+        isOpen={showQuickAdd}
+        onClose={() => setShowQuickAdd(false)}
+        onSave={saveQuickEvent}
+        data={data}
+        sourceType="shopping"
+        sourceId={itemToSchedule?.id}
+        defaultTitle={itemToSchedule?.item}
+        defaultCategory="Economía"
+      />
+
 
       <style>{`
         .total-estimate {
@@ -181,12 +246,13 @@ export default function ShoppingListPro({ data, setData }) {
         .action-btn.clear:hover { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
 
         .category-section { margin-bottom: 25px; }
-        .category-section h3 {
+        .cat-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .cat-header h3 {
           font-size: 0.9em;
           text-transform: uppercase;
           letter-spacing: 1px;
           opacity: 0.6;
-          margin-bottom: 12px;
+          margin-bottom: 0;
           display: flex;
           align-items: center;
           gap: 8px;
@@ -211,10 +277,13 @@ export default function ShoppingListPro({ data, setData }) {
         
         .check-btn { background: none; border: none; padding: 0; color: var(--primary); }
         .item-details { flex-grow: 1; display: flex; flex-direction: column; }
+        .item-title-row { display: flex; align-items: center; gap: 8px; }
         .item-name { font-weight: 500; }
         .item-meta { font-size: 0.75em; opacity: 0.6; }
         
-        .item-actions { display: flex; gap: 5px; }
+        .item-actions { display: flex; gap: 5px; align-items: center; }
+        .action-schedule-btn { background: none; border: none; padding: 5px; color: var(--muted); opacity: 0.3; cursor: pointer; }
+        .action-schedule-btn:hover { opacity: 1; color: var(--primary); }
         .freq-btn, .del-btn {
           background: none;
           border: none;

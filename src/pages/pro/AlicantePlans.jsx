@@ -1,6 +1,5 @@
-import { useState } from "react";
-import Card from "../../components/Card";
-import { Search, Filter, MapPin, CloudRain, Baby, ExternalLink, Plus, Trash2, Euro } from "lucide-react";
+import { Calendar } from "lucide-react";
+import CalendarQuickAdd from "../../components/CalendarQuickAdd";
 
 export default function AlicantePlans({ data, setData }) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -10,6 +9,10 @@ export default function AlicantePlans({ data, setData }) {
     rainFriendly: false,
     kidsFriendly: false
   });
+
+  // Estado para el modal de programación rápida
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [planToSchedule, setPlanToSchedule] = useState(null);
 
   const filteredPlans = data.alicantePlans.filter(plan => {
     const matchesSearch = plan.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -23,11 +26,32 @@ export default function AlicantePlans({ data, setData }) {
   });
 
   const removePlan = (id) => {
+    if (window.confirm("¿Seguro que quieres eliminar este plan?")) {
+      setData({
+        ...data,
+        alicantePlans: data.alicantePlans.filter(p => p.id !== id)
+      });
+    }
+  };
+
+
+  const handleOpenSchedule = (plan, e) => {
+    e.stopPropagation();
+    setPlanToSchedule(plan);
+    setShowQuickAdd(true);
+  };
+
+  const saveQuickEvent = (event) => {
     setData({
       ...data,
-      alicantePlans: data.alicantePlans.filter(p => p.id !== id)
+      calendarEvents: [...(data.calendarEvents || []), event]
     });
   };
+
+  const isScheduled = (id) => {
+    return (data.calendarEvents || []).some(e => e.sourceType === 'alicante' && e.sourceId === id);
+  };
+
 
   return (
     <div className="page alicante-page">
@@ -82,14 +106,22 @@ export default function AlicantePlans({ data, setData }) {
           <div key={plan.id} className="plan-card">
             <div className="plan-header">
               <div className="type-badge">{plan.type}</div>
-              <button onClick={() => removePlan(plan.id)} className="del-btn"><Trash2 size={16} /></button>
+              <div className="p-actions">
+                <button className="action-schedule-btn" onClick={(e) => handleOpenSchedule(plan, e)}>
+                  <Calendar size={18} />
+                </button>
+                <button onClick={() => removePlan(plan.id)} className="del-btn"><Trash2 size={16} /></button>
+              </div>
             </div>
             
-            <h3>{plan.name}</h3>
+            <div className="title-row">
+              <h3>{data.settings?.privacyMode ? "••••••••" : plan.name}</h3>
+              {isScheduled(plan.id) && <div className="scheduled-badge min"><Calendar size={10}/></div>}
+            </div>
             
             <div className="plan-info">
               <div className="info-item"><MapPin size={14} /> {plan.zone}, {plan.municipality}</div>
-              <div className="info-item"><Euro size={14} /> {plan.priceCategory} ({plan.estimatedPrice}€ aprox)</div>
+              <div className="info-item"><Euro size={14} /> {plan.priceCategory} ({data.settings?.privacyMode ? "••" : plan.estimatedPrice}€ aprox)</div>
               <div className="info-item"><Search size={14} /> {plan.duration} de duración</div>
             </div>
 
@@ -99,7 +131,8 @@ export default function AlicantePlans({ data, setData }) {
               <span className="tag env">{plan.environment}</span>
             </div>
 
-            <p className="notes">{plan.notes}</p>
+            <p className="notes">{data.settings?.privacyMode ? "Notas ocultas" : plan.notes}</p>
+
 
             {plan.link && (
               <a href={plan.link} target="_blank" rel="noreferrer" className="link-btn">
@@ -114,6 +147,19 @@ export default function AlicantePlans({ data, setData }) {
           <span>Añadir nuevo plan</span>
         </button>
       </div>
+
+      <CalendarQuickAdd 
+        isOpen={showQuickAdd}
+        onClose={() => setShowQuickAdd(false)}
+        onSave={saveQuickEvent}
+        data={data}
+        sourceType="alicante"
+        sourceId={planToSchedule?.id}
+        defaultTitle={planToSchedule?.name}
+        defaultDescription={`${planToSchedule?.notes}\nZona: ${planToSchedule?.zone}`}
+        defaultCategory={planToSchedule?.kidsFriendly ? "Hija" : "Ocio"}
+      />
+
 
       <style>{`
         .controls-box {
@@ -177,6 +223,9 @@ export default function AlicantePlans({ data, setData }) {
           justify-content: space-between;
           align-items: center;
         }
+        .p-actions { display: flex; align-items: center; gap: 10px; }
+        .action-schedule-btn { background: none; border: none; padding: 4px; color: var(--muted); cursor: pointer; opacity: 0.3; }
+        .action-schedule-btn:hover { opacity: 1; color: var(--primary); }
         .type-badge {
           background: var(--bg);
           padding: 4px 10px;
@@ -186,6 +235,8 @@ export default function AlicantePlans({ data, setData }) {
           text-transform: uppercase;
           color: var(--primary);
         }
+        .title-row { display: flex; align-items: center; gap: 10px; }
+        .scheduled-badge.min { padding: 2px 6px; border-radius: 6px; }
         .plan-card h3 { margin: 0; font-size: 1.2rem; }
         .info-item {
           display: flex;

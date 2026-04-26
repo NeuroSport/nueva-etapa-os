@@ -21,11 +21,17 @@ import {
 const CATEGORIES = ["Hogar", "Hija", "Salud", "Coche", "Trabajo", "Otros"];
 const PRIORITIES = ["Baja", "Media", "Alta", "Crítica"];
 
+import CalendarQuickAdd from "../components/CalendarQuickAdd";
+
 export default function Needs({ data, setData }) {
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [filterCat, setFilterCat] = useState("Todas");
   const [sortBy, setSortBy] = useState("priority");
+
+  // Estado para el modal de programación rápida
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [needToSchedule, setNeedToSchedule] = useState(null);
 
   // Utilidad de fecha segura
   const formatLocalDate = (date) => {
@@ -73,11 +79,32 @@ export default function Needs({ data, setData }) {
 
   const handleSave = (e) => {
     e.preventDefault();
+    const title = editingItem.title.trim();
+    const cost = parseFloat(editingItem.cost);
+
+    // VALIDACIÓN DE INPUTS
+    if (!title) return alert("El nombre de la necesidad es obligatorio");
+    if (isNaN(cost) || cost < 0) return alert("El coste debe ser un número válido");
+    if (title.length > 50) return alert("El título es demasiado largo (máximo 50 caracteres)");
+
+    // PREVENCIÓN DE DUPLICADOS
+    const isDuplicate = data.needs.some(n => 
+      n.id !== editingItem.id && 
+      n.title.toLowerCase() === title.toLowerCase()
+    );
+
+    if (isDuplicate) {
+      if (!window.confirm("Ya tienes registrada una necesidad similar. ¿Deseas continuar?")) {
+        return;
+      }
+    }
+
+    const itemToSave = { ...editingItem, title, cost };
     const exists = data.needs.find(n => n.id === editingItem.id);
     if (exists) {
-      setData({ ...data, needs: data.needs.map(n => n.id === editingItem.id ? editingItem : n) });
+      setData({ ...data, needs: data.needs.map(n => n.id === editingItem.id ? itemToSave : n) });
     } else {
-      setData({ ...data, needs: [...data.needs, editingItem] });
+      setData({ ...data, needs: [...data.needs, itemToSave] });
     }
     setShowModal(false);
   };
@@ -90,8 +117,29 @@ export default function Needs({ data, setData }) {
   };
 
   const deleteItem = (id) => {
-    setData({ ...data, needs: data.needs.filter(n => n.id !== id) });
-    setShowModal(false);
+    // PROTECCIÓN DE BORRADO
+    if (window.confirm("¿Seguro que quieres eliminar esta necesidad?")) {
+      setData({ ...data, needs: data.needs.filter(n => n.id !== id) });
+      setShowModal(false);
+    }
+  };
+
+
+  const handleOpenSchedule = (need, e) => {
+    e.stopPropagation();
+    setNeedToSchedule(need);
+    setShowQuickAdd(true);
+  };
+
+  const saveQuickEvent = (event) => {
+    setData({
+      ...data,
+      calendarEvents: [...(data.calendarEvents || []), event]
+    });
+  };
+
+  const isScheduled = (id) => {
+    return (data.calendarEvents || []).some(e => e.sourceType === 'needs' && e.sourceId === id);
   };
 
   return (
@@ -103,6 +151,7 @@ export default function Needs({ data, setData }) {
           <span>{totalCost.toFixed(2)}€ pendientes</span>
         </div>
       </div>
+
 
       <div className="needs-tools">
         <div className="tool">
@@ -136,22 +185,42 @@ export default function Needs({ data, setData }) {
             
             <div className="need-body">
               <div className="need-title-row">
-                <h3>{item.title}</h3>
+                <h3>{data.settings?.privacyMode ? "••••••••" : item.title}</h3>
                 {item.priority === "Crítica" && <AlertCircle size={16} color="#ef4444" />}
+                {isScheduled(item.id) && <div className="scheduled-badge"><Calendar size={10}/></div>}
               </div>
               <div className="need-meta">
                 <span><Tag size={12} /> {item.category}</span>
                 <span><Calendar size={12} /> {item.deadline}</span>
               </div>
-              <p className="need-desc">{item.description}</p>
+              <p className="need-desc">{data.settings?.privacyMode ? "Detalles ocultos" : item.description}</p>
             </div>
 
-            <div className="need-cost">
-              {item.cost ? `${item.cost}€` : '--'}
+            <div className="need-actions-right">
+              <button className="schedule-item-btn" onClick={(e) => handleOpenSchedule(item, e)}>
+                <Calendar size={18} />
+              </button>
+              <div className="need-cost">
+                {data.settings?.privacyMode ? "•••€" : (item.cost ? `${item.cost}€` : '--')}
+              </div>
             </div>
+
           </div>
         ))}
       </div>
+
+      <CalendarQuickAdd 
+        isOpen={showQuickAdd}
+        onClose={() => setShowQuickAdd(false)}
+        onSave={saveQuickEvent}
+        data={data}
+        sourceType="needs"
+        sourceId={needToSchedule?.id}
+        defaultTitle={needToSchedule?.title}
+        defaultDescription={needToSchedule?.description}
+        defaultCategory={needToSchedule?.category}
+      />
+
 
       {showModal && (
         <div className="modal-overlay">
@@ -243,6 +312,7 @@ export default function Needs({ data, setData }) {
         .need-title-row h3 { font-size: 1rem; margin: 0; }
         .need-meta { display: flex; gap: 10px; font-size: 0.75em; opacity: 0.5; margin-bottom: 6px; }
         .need-desc { font-size: 0.85em; opacity: 0.7; margin: 0; }
+        .need-actions-right { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
         .need-cost { font-weight: bold; font-size: 1.1rem; color: #ef4444; }
 
         /* MODAL */

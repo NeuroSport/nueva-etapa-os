@@ -1,9 +1,38 @@
+import { useState } from "react";
 import Card from "../components/Card";
-import { Zap, ShieldCheck, TrendingUp, Calendar, Heart, Wallet } from "lucide-react";
+import { Zap, ShieldCheck, TrendingUp, Calendar, Heart, Wallet, Plus, CheckSquare, Euro, Star } from "lucide-react";
 
-export default function Dashboard({ data, setPage }) {
+export default function Dashboard({ data, setData, setPage, showToast }) {
+  const [quickTask, setQuickTask] = useState("");
   const pendingTasks = data.tasks.filter((task) => task.status !== 'hecho');
   const totalExpenses = data.expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+
+  const handleQuickTaskAdd = (e) => {
+    e.preventDefault();
+    if (!quickTask.trim()) return;
+    
+    const newTask = {
+      id: crypto.randomUUID(),
+      title: quickTask,
+      plannedDate: new Date().toISOString().split('T')[0],
+      status: 'pendiente',
+      priority: 'media'
+    };
+
+    setData({
+      ...data,
+      tasks: [newTask, ...data.tasks]
+    });
+    setQuickTask("");
+    showToast("Tarea añadida", "success");
+  };
+
+  const quickActions = [
+    { label: "Tarea", icon: CheckSquare, color: "#3b82f6", page: "tasks" },
+    { label: "Gasto", icon: Euro, color: "#ef4444", page: "economy" },
+    { label: "Evento", icon: Calendar, color: "#10b981", page: "calendar" },
+    { label: "Plan Hija", icon: Star, color: "#ec4899", page: "daughter" },
+  ];
 
   return (
     <div className="page dashboard-page">
@@ -13,6 +42,29 @@ export default function Dashboard({ data, setPage }) {
         <h1>Buenos días.</h1>
         <p>Hoy es un buen día para avanzar.</p>
       </header>
+
+      {/* ENTRADA RÁPIDA */}
+      <form className="quick-input-box" onSubmit={handleQuickTaskAdd}>
+        <input 
+          type="text" 
+          placeholder="Añadir tarea rápida..." 
+          value={quickTask}
+          onChange={e => setQuickTask(e.target.value)}
+        />
+        <button type="submit" className="quick-add-btn">
+          <Plus size={24} />
+        </button>
+      </form>
+
+      {/* BOTONES DE ACCIÓN RÁPIDA */}
+      <div className="quick-actions-bar">
+        {quickActions.map((act, i) => (
+          <button key={i} className="action-circle-btn" onClick={() => setPage(act.page)} style={{ "--act-color": act.color }}>
+            <act.icon size={20} />
+            <span>{act.label}</span>
+          </button>
+        ))}
+      </div>
 
       {/* BOTÓN MODO FOCO GIGANTE */}
       <div className="focus-hero" onClick={() => setPage('focus')}>
@@ -32,7 +84,7 @@ export default function Dashboard({ data, setPage }) {
           <div className="lab">Tareas</div>
         </div>
         <div className="mini-card" onClick={() => setPage('economy')}>
-          <div className="val">{totalExpenses}€</div>
+          <div className="val">{data.settings?.privacyMode ? "•••" : totalExpenses}€</div>
           <div className="lab">Gastos</div>
         </div>
         <div className="mini-card" onClick={() => setPage('daughter')}>
@@ -46,7 +98,7 @@ export default function Dashboard({ data, setPage }) {
           pendingTasks.slice(0, 3).map((task) => (
             <div key={task.id} className="dash-task-item" onClick={() => setPage('tasks')}>
               <ShieldCheck size={18} color="#10b981" />
-              <span>{task.title}</span>
+              <span>{data.settings?.privacyMode ? "••••••••" : task.title}</span>
             </div>
           ))
         ) : (
@@ -54,32 +106,23 @@ export default function Dashboard({ data, setPage }) {
         )}
       </Card>
 
-      {/* ACCESO AL INFORME SEMANAL */}
-      <div className="review-shortcut" onClick={() => setPage('sunday-review')}>
-        <div className="rs-icon"><TrendingUp size={24} color="#8b5cf6" /></div>
-        <div className="rs-text">
-          <h3>Informe Semanal</h3>
-          <p>Mira tus logros, ahorros y tiempo con tu hija.</p>
-        </div>
-      </div>
-
-      <Card title="Acceso Rápido">
-        <div className="access-buttons">
-          <button onClick={() => setPage('menu')} className="acc-btn"><Calendar size={18} /> Menú</button>
-          <button onClick={() => setPage('plans')} className="acc-btn"><Heart size={18} /> Planes</button>
-          <button onClick={() => setPage('shopping')} className="acc-btn"><Wallet size={18} /> Compra</button>
-        </div>
-      </Card>
-
       <style>{`
-        .dashboard-page { padding: 20px; background: #f8fafc; min-height: 100vh; padding-bottom: 100px; }
+        .dashboard-page { padding: 20px; background: #f8fafc; min-height: 100vh; padding-bottom: 120px; }
         .v2-badge { background: #1e293b; color: white; font-size: 0.6em; font-weight: 800; padding: 4px 10px; border-radius: 20px; display: inline-block; margin-bottom: 10px; letter-spacing: 1px; }
-        .dash-header { margin-bottom: 25px; }
+        .dash-header { margin-bottom: 20px; }
         .dash-header h1 { font-size: 2rem; margin: 0; font-weight: 800; color: #0f172a; }
         .dash-header p { margin: 5px 0 0 0; opacity: 0.5; font-size: 0.95rem; }
 
-        .focus-hero { background: #0f172a; color: white; padding: 25px; border-radius: 28px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; cursor: pointer; transition: transform 0.2s; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
-        .focus-hero:active { transform: scale(0.98); }
+        .quick-input-box { display: flex; gap: 10px; margin-bottom: 20px; }
+        .quick-input-box input { flex-grow: 1; margin: 0; border-radius: 18px; border: 2px solid #e2e8f0; padding: 12px 18px; }
+        .quick-add-btn { width: 50px; height: 50px; background: #3b82f6; color: white; border: none; border-radius: 18px; display: flex; align-items: center; justify-content: center; }
+
+        .quick-actions-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 25px; }
+        .action-circle-btn { background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 12px 5px; display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--act-color); transition: all 0.2s; }
+        .action-circle-btn span { font-size: 0.65em; font-weight: bold; color: #64748b; }
+        .action-circle-btn:active { background: #f1f5f9; transform: translateY(2px); }
+
+        .focus-hero { background: #0f172a; color: white; padding: 25px; border-radius: 28px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; cursor: pointer; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
         .hero-content { display: flex; align-items: center; gap: 20px; }
         .hero-text h2 { margin: 0; font-size: 1.1rem; }
         .hero-text p { margin: 2px 0 0 0; font-size: 0.75em; opacity: 0.5; }
@@ -93,23 +136,6 @@ export default function Dashboard({ data, setPage }) {
         .dash-task-item { display: flex; align-items: center; gap: 12px; padding: 15px 0; border-bottom: 1px solid #f1f5f9; cursor: pointer; }
         .dash-task-item:last-child { border: none; }
         .dash-task-item span { font-size: 0.95em; color: #334155; }
-
-        .review-shortcut {
-          background: #f5f3ff;
-          border: 2px solid #ddd6fe;
-          padding: 20px;
-          border-radius: 24px;
-          display: flex;
-          align-items: center;
-          gap: 15px;
-          margin-bottom: 25px;
-          cursor: pointer;
-        }
-        .rs-text h3 { margin: 0; font-size: 1rem; color: #5b21b6; }
-        .rs-text p { margin: 2px 0 0 0; font-size: 0.75em; opacity: 0.7; color: #7c3aed; }
-
-        .access-buttons { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 5px; }
-        .acc-btn { background: #f1f5f9; border: none; padding: 12px; border-radius: 12px; font-size: 0.75em; font-weight: bold; display: flex; flex-direction: column; align-items: center; gap: 8px; color: #475569; }
         
         .empty-msg { text-align: center; padding: 20px 0; color: #94a3b8; font-size: 0.9em; }
       `}</style>

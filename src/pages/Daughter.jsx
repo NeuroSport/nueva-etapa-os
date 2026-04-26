@@ -22,11 +22,17 @@ import {
   Sparkles
 } from "lucide-react";
 
+import CalendarQuickAdd from "../components/CalendarQuickAdd";
+
 export default function Daughter({ data, setData }) {
   const [activeTab, setActiveTab] = useState("custody");
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState(null); // 'custody', 'plan', 'inventory', 'expense'
   const [editingItem, setEditingItem] = useState(null);
+
+  // Estado para el modal de programación rápida
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [itemToSchedule, setItemToSchedule] = useState(null);
 
   // Utilidad de fecha segura
   const formatLocalDate = (date) => {
@@ -41,7 +47,7 @@ export default function Daughter({ data, setData }) {
 
   // Cálculos
   const nextDayWithHer = useMemo(() => {
-    const future = data.daughterSystem.custodyCalendar
+    const future = (data.daughterSystem.custodyCalendar || [])
       .filter(c => c.date >= todayStr && c.type === 'conmigo')
       .sort((a,b) => a.date.localeCompare(b.date))[0];
     return future ? future.date : "Sin fecha";
@@ -76,27 +82,37 @@ export default function Daughter({ data, setData }) {
   const handleSave = (e) => {
     e.preventDefault();
     const system = { ...data.daughterSystem };
+    const title = (editingItem.title || editingItem.item || "").trim();
     
+    if (!title) return alert("El título o concepto es obligatorio");
+
     if (modalType === 'custody') {
+      // PREVENCIÓN DE DUPLICADOS de fecha en custodia
+      const isDuplicate = system.custodyCalendar.some(c => c.id !== editingItem.id && c.date === editingItem.date);
+      if (isDuplicate) {
+        if (!window.confirm("Ya tienes un evento para esta fecha. ¿Deseas añadir otro?")) return;
+      }
       const exists = system.custodyCalendar.find(c => c.id === editingItem.id);
       system.custodyCalendar = exists 
-        ? system.custodyCalendar.map(c => c.id === editingItem.id ? editingItem : c)
-        : [...system.custodyCalendar, editingItem];
+        ? system.custodyCalendar.map(c => c.id === editingItem.id ? { ...editingItem, title } : c)
+        : [...system.custodyCalendar, { ...editingItem, title }];
     } else if (modalType === 'plan') {
       const exists = system.plans.ideas.find(p => p.id === editingItem.id);
       system.plans.ideas = exists 
-        ? system.plans.ideas.map(p => p.id === editingItem.id ? editingItem : p)
-        : [...system.plans.ideas, editingItem];
+        ? system.plans.ideas.map(p => p.id === editingItem.id ? { ...editingItem, title } : p)
+        : [...system.plans.ideas, { ...editingItem, title }];
     } else if (modalType === 'inventory') {
       const exists = system.inventory.clothes.find(c => c.id === editingItem.id);
       system.inventory.clothes = exists 
-        ? system.inventory.clothes.map(c => c.id === editingItem.id ? editingItem : c)
-        : [...system.inventory.clothes, editingItem];
+        ? system.inventory.clothes.map(c => c.id === editingItem.id ? { ...editingItem, item: title } : c)
+        : [...system.inventory.clothes, { ...editingItem, item: title }];
     } else if (modalType === 'expense') {
+      const amount = parseFloat(editingItem.amount);
+      if (isNaN(amount) || amount < 0) return alert("La cantidad debe ser un número válido");
       const exists = system.expenses.find(ex => ex.id === editingItem.id);
       system.expenses = exists 
-        ? system.expenses.map(ex => ex.id === editingItem.id ? editingItem : ex)
-        : [...system.expenses, editingItem];
+        ? system.expenses.map(ex => ex.id === editingItem.id ? { ...editingItem, title, amount } : ex)
+        : [...system.expenses, { ...editingItem, title, amount }];
     }
 
     setData({ ...data, daughterSystem: system });
@@ -104,19 +120,41 @@ export default function Daughter({ data, setData }) {
   };
 
   const handleDelete = (id) => {
-    const system = { ...data.daughterSystem };
-    if (modalType === 'custody') system.custodyCalendar = system.custodyCalendar.filter(c => c.id !== id);
-    if (modalType === 'plan') system.plans.ideas = system.plans.ideas.filter(p => p.id !== id);
-    if (modalType === 'inventory') system.inventory.clothes = system.inventory.clothes.filter(c => c.id !== id);
-    if (modalType === 'expense') system.expenses = system.expenses.filter(ex => ex.id !== id);
-    
-    setData({ ...data, daughterSystem: system });
-    setShowModal(false);
+    // PROTECCIÓN DE BORRADO
+    if (window.confirm("¿Seguro que quieres eliminar este registro?")) {
+      const system = { ...data.daughterSystem };
+      if (modalType === 'custody') system.custodyCalendar = system.custodyCalendar.filter(c => c.id !== id);
+      if (modalType === 'plan') system.plans.ideas = system.plans.ideas.filter(p => p.id !== id);
+      if (modalType === 'inventory') system.inventory.clothes = system.inventory.clothes.filter(c => c.id !== id);
+      if (modalType === 'expense') system.expenses = system.expenses.filter(ex => ex.id !== id);
+      
+      setData({ ...data, daughterSystem: system });
+      setShowModal(false);
+    }
+  };
+
+
+  const handleOpenSchedule = (item, type, e) => {
+    e.stopPropagation();
+    setItemToSchedule({ ...item, type });
+    setShowQuickAdd(true);
+  };
+
+  const saveQuickEvent = (event) => {
+    setData({
+      ...data,
+      calendarEvents: [...(data.calendarEvents || []), event]
+    });
+  };
+
+  const isScheduled = (id, type) => {
+    return (data.calendarEvents || []).some(e => e.sourceType === type && e.sourceId === id);
   };
 
   return (
     <div className="page daughter-page">
       <div className="daughter-header">
+
         <div className="main-stat">
           <Baby size={32} color="#ec4899" />
           <div>
@@ -145,7 +183,7 @@ export default function Daughter({ data, setData }) {
                   <div key={c.id} className={`custody-item ${c.type}`} onClick={() => openModal('custody', c)}>
                     <div className="c-date">{c.date}</div>
                     <div className="c-info">
-                      <div className="c-title">{c.title || (c.type === 'conmigo' ? 'Día conmigo' : c.type)}</div>
+                      <div className="c-title">{data.settings?.privacyMode ? "••••••••" : (c.title || (c.type === 'conmigo' ? 'Día conmigo' : c.type))}</div>
                     </div>
                     {c.type === 'conmigo' && <Heart size={16} fill="#ec4899" color="#ec4899" />}
                   </div>
@@ -156,13 +194,20 @@ export default function Daughter({ data, setData }) {
             <Card title="Checklist de Responsabilidades">
               <div className="checklist">
                 {data.daughterSystem.responsibilities.map(r => (
-                  <div key={r.id} className="check-item" onClick={() => handleToggleResponsibility(r.id)}>
-                    {r.done ? <CheckCircle size={24} color="#10b981" /> : <Circle size={24} color="#94a3b8" />}
-                    <span className={r.done ? 'done' : ''}>{r.title}</span>
+                  <div key={r.id} className="action-row">
+                    <div className="check-item" onClick={() => handleToggleResponsibility(r.id)}>
+                      {r.done ? <CheckCircle size={24} color="#10b981" /> : <Circle size={24} color="#94a3b8" />}
+                      <span className={r.done ? 'done' : ''}>{r.title}</span>
+                      {isScheduled(r.id, 'daughter-resp') && <div className="scheduled-badge min"><Calendar size={8}/></div>}
+                    </div>
+                    <button className="action-schedule-btn" onClick={(e) => handleOpenSchedule(r, 'daughter-resp', e)}>
+                      <Calendar size={14} />
+                    </button>
                   </div>
                 ))}
               </div>
             </Card>
+
           </div>
         )}
 
@@ -176,8 +221,14 @@ export default function Daughter({ data, setData }) {
                 {data.daughterSystem.plans.ideas.map(p => (
                   <div key={p.id} className="plan-card" onClick={() => openModal('plan', p)}>
                     <div className="p-header">
-                      <Sparkles size={16} color="#f59e0b" />
-                      <strong>{p.title}</strong>
+                      <div className="p-title-group">
+                        <Sparkles size={16} color="#f59e0b" />
+                        <strong>{data.settings?.privacyMode ? "••••••••" : p.title}</strong>
+                        {isScheduled(p.id, 'daughter-plan') && <div className="scheduled-badge min"><Calendar size={8}/></div>}
+                      </div>
+                      <button className="schedule-item-btn small" onClick={(e) => handleOpenSchedule(p, 'daughter-plan', e)}>
+                        <Calendar size={14} />
+                      </button>
                     </div>
                     <p>{p.description}</p>
                     <div className="p-footer">
@@ -187,6 +238,7 @@ export default function Daughter({ data, setData }) {
                   </div>
                 ))}
               </div>
+
             </Card>
           </div>
         )}
@@ -202,7 +254,7 @@ export default function Daughter({ data, setData }) {
                   <div key={c.id} className="inventory-item" onClick={() => openModal('inventory', c)}>
                     <Shirt size={18} />
                     <div className="i-details">
-                      <strong>{c.item}</strong>
+                      <strong>{data.settings?.privacyMode ? "••••••••" : c.item}</strong>
                       <span>Talla: {c.size}</span>
                     </div>
                     <div className={`i-status ${c.status}`}>{c.status}</div>
@@ -217,7 +269,7 @@ export default function Daughter({ data, setData }) {
           <div className="tab-section">
             <Card title="Gastos Asociados">
               <div className="total-expenses-banner">
-                <Euro size={20} /> Total acumulado: {totalDaughterExpenses.toFixed(2)}€
+                <Euro size={20} /> Total acumulado: {data.settings?.privacyMode ? "••••€" : `${totalDaughterExpenses.toFixed(2)}€`}
               </div>
               <div className="add-bar">
                 <button className="add-btn-inline" onClick={() => openModal('expense')}><Plus size={16} /> Registrar gasto</button>
@@ -226,8 +278,8 @@ export default function Daughter({ data, setData }) {
                 {data.daughterSystem.expenses.map(e => (
                   <div key={e.id} className="expense-item" onClick={() => openModal('expense', e)}>
                     <div className="e-date">{e.date}</div>
-                    <div className="e-title">{e.title}</div>
-                    <div className="e-amount">{e.amount}€</div>
+                    <div className="e-title">{data.settings?.privacyMode ? "••••••••" : e.title}</div>
+                    <div className="e-amount">{data.settings?.privacyMode ? "•••€" : `${e.amount}€`}</div>
                   </div>
                 ))}
               </div>
@@ -332,6 +384,17 @@ export default function Daughter({ data, setData }) {
         </div>
       )}
 
+      <CalendarQuickAdd 
+        isOpen={showQuickAdd}
+        onClose={() => setShowQuickAdd(false)}
+        onSave={saveQuickEvent}
+        data={data}
+        sourceType={itemToSchedule?.type}
+        sourceId={itemToSchedule?.id}
+        defaultTitle={itemToSchedule?.title || itemToSchedule?.item}
+        defaultCategory="Hija"
+      />
+
       <style>{`
         .daughter-page { padding: 15px; padding-bottom: 90px; }
         .daughter-header { background: #fff1f2; margin: -15px -15px 20px -15px; padding: 30px 20px; border-bottom: 1px solid #fecdd3; }
@@ -367,13 +430,17 @@ export default function Daughter({ data, setData }) {
 
         /* CHECKLIST */
         .checklist { display: flex; flex-direction: column; gap: 15px; }
-        .check-item { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+        .action-row { display: flex; justify-content: space-between; align-items: center; }
+        .check-item { display: flex; align-items: center; gap: 12px; cursor: pointer; flex-grow: 1; }
         .check-item span.done { text-decoration: line-through; opacity: 0.5; }
+        .action-schedule-btn { background: none; border: none; padding: 4px; color: var(--muted); cursor: pointer; opacity: 0.4; }
+        .scheduled-badge.min { padding: 2px 4px; border-radius: 4px; margin-left: 5px; }
 
         /* PLANS */
         .plans-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
         .plan-card { background: var(--bg); padding: 15px; border-radius: 16px; border: 1px solid var(--border); }
-        .p-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .p-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .p-title-group { display: flex; align-items: center; gap: 8px; }
         .plan-card p { font-size: 0.85em; opacity: 0.7; margin: 0 0 10px 0; }
         .p-footer { display: flex; justify-content: space-between; font-size: 0.75em; font-weight: bold; opacity: 0.6; }
 
@@ -403,6 +470,7 @@ export default function Daughter({ data, setData }) {
         .save-btn { flex-grow: 1; background: #ec4899; color: white; border: none; padding: 15px; border-radius: 12px; font-weight: bold; }
         .del-btn { background: #fee2e2; color: #ef4444; border: none; padding: 15px; border-radius: 12px; font-weight: bold; }
       `}</style>
+
     </div>
   );
 }

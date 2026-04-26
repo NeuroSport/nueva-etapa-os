@@ -143,7 +143,7 @@ export default function Economy({ data, setData }) {
   };
 
   return (
-    <div className="page economy-page">
+    <div className="page economy-page page-transition">
       <div className="economy-header">
         <h1>Control Financiero</h1>
         <div className={`status-badge ${totals.status}`}>
@@ -154,50 +154,85 @@ export default function Economy({ data, setData }) {
       <div className="summary-grid">
         <div className="summary-card main-balance">
           <div className="label">Dinero Disponible</div>
-          <div className="value">{totals.available.toFixed(2)}€</div>
-          <div className="sub-value">Total mes: {totals.totalIncome}€</div>
+          <div className="value">{data.settings?.privacyMode ? "••••" : totals.available.toFixed(2)}€</div>
+          <div className="sub-value">Total mes: {data.settings?.privacyMode ? "••••" : totals.totalIncome}€</div>
         </div>
         <div className="summary-mini-grid">
           <div className="mini-card income">
             <TrendingUp size={16} />
             <span>Ingresos</span>
-            <strong>+{totals.totalIncome}€</strong>
+            <strong>{data.settings?.privacyMode ? "•••" : totals.totalIncome}€</strong>
           </div>
           <div className="mini-card budget">
             <PiggyBank size={16} />
-            <span>Semanal Libre</span>
-            <strong>{totals.weeklyBudget.toFixed(2)}€</strong>
+            <span>Libre/Semana</span>
+            <strong>{data.settings?.privacyMode ? "•••" : totals.weeklyBudget.toFixed(2)}€</strong>
           </div>
         </div>
       </div>
 
       <div className="economy-tabs">
         <button className={activeTab === 'expenses' ? 'active' : ''} onClick={() => setActiveTab('expenses')}>
-          Gastos ({data.expenses.length})
+          Gastos
         </button>
         <button className={activeTab === 'income' ? 'active' : ''} onClick={() => setActiveTab('income')}>
-          Ingresos ({data.income.length})
+          Ingresos
         </button>
       </div>
 
-      <div className="tools-bar">
-        <div className="search-filter">
-          <Filter size={16} />
-          <select value={filterCat} onChange={e => setFilterCat(e.target.value)}>
-            <option value="Todas">Categorías</option>
-            {Object.keys(CATEGORIES).map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
+      {/* FILTROS TIPO CHIP */}
+      <div className="chips-container">
+        <div 
+          className={`chip ${filterStatus === 'Todos' ? 'active' : ''}`} 
+          onClick={() => setFilterStatus('Todos')}
+        >
+          Todos
         </div>
-        <div className="sort-filter">
+        {activeTab === 'expenses' && (
+          <>
+            <div 
+              className={`chip ${filterStatus === 'Pendientes' ? 'active' : ''}`} 
+              onClick={() => setFilterStatus('Pendientes')}
+            >
+              Pendientes ⏳
+            </div>
+            <div 
+              className={`chip ${filterStatus === 'Pagados' ? 'active' : ''}`} 
+              onClick={() => setFilterStatus('Pagados')}
+            >
+              Pagados ✅
+            </div>
+          </>
+        )}
+        <div 
+          className={`chip ${filterCat === 'Todas' ? 'active' : ''}`} 
+          onClick={() => setFilterCat('Todas')}
+        >
+          Categorías
+        </div>
+        {Object.keys(CATEGORIES).map(c => (
+          <div 
+            key={c} 
+            className={`chip ${filterCat === c ? 'active' : ''}`} 
+            onClick={() => setFilterCat(c)}
+          >
+            {c}
+          </div>
+        ))}
+      </div>
+
+      <div className="tools-bar">
+        <div className="sort-filter" style={{ flexGrow: 1 }}>
           <ArrowUpDown size={16} />
           <select value={sortBy} onChange={e => setSortBy(e.target.value)}>
-            <option value="date">Fecha</option>
-            <option value="amount">Cantidad</option>
-            <option value="priority">Prioridad</option>
+            <option value="date">Ordenar por Fecha</option>
+            <option value="amount">Ordenar por Cantidad</option>
+            <option value="priority">Ordenar por Prioridad</option>
           </select>
         </div>
         <button className="add-btn" onClick={handleAddItem}><Plus size={20} /></button>
       </div>
+
 
       <div className="transaction-list">
         {filteredItems.length === 0 && <p className="empty">No hay registros con estos filtros.</p>}

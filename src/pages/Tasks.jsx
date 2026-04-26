@@ -22,12 +22,18 @@ const CATEGORIES = ["Trabajo", "Hija", "Personal", "Hogar", "Salud", "Otros"];
 const PRIORITIES = ["Baja", "Media", "Alta"];
 const STATUSES = ["pendiente", "en proceso", "hecho"];
 
+import CalendarQuickAdd from "../components/CalendarQuickAdd";
+
 export default function Tasks({ data, setData }) {
   const [view, setView] = useState("all"); // all, today
   const [showModal, setShowModal] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [filterCat, setFilterCat] = useState("Todas");
   const [sortBy, setSortBy] = useState("priority");
+  
+  // Estado para el modal de programación rápida
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [taskToSchedule, setTaskToSchedule] = useState(null);
 
   // Utilidad de fecha segura
   const formatLocalDate = (date) => {
@@ -44,7 +50,8 @@ export default function Tasks({ data, setData }) {
   const filteredTasks = useMemo(() => {
     return data.tasks
       .filter(t => {
-        const catMatch = filterCat === "Todas" || t.category === filterCat;
+        const catMatch = filterCat === "Todas" || 
+                        (filterCat === "Urgente" ? t.priority === "Alta" : t.category === filterCat);
         const viewMatch = view === "all" || t.plannedDate === todayStr;
         return catMatch && viewMatch;
       })
@@ -57,6 +64,7 @@ export default function Tasks({ data, setData }) {
         return 0;
       });
   }, [data.tasks, view, filterCat, sortBy, todayStr]);
+
 
   const handleAddTask = () => {
     setEditingTask({
@@ -78,11 +86,32 @@ export default function Tasks({ data, setData }) {
 
   const handleSave = (e) => {
     e.preventDefault();
+    const title = editingTask.title.trim();
+    
+    // VALIDACIÓN DE INPUTS
+    if (!title) return alert("El título de la tarea es obligatorio");
+    if (title.length > 50) return alert("El título es demasiado largo (máximo 50 caracteres)");
+    if (isNaN(editingTask.duration) || editingTask.duration < 0) return alert("La duración debe ser un número válido");
+
+    // PREVENCIÓN DE DUPLICADOS
+    const isDuplicate = data.tasks.some(t => 
+      t.id !== editingTask.id && 
+      t.title.toLowerCase() === title.toLowerCase() &&
+      t.plannedDate === editingTask.plannedDate
+    );
+
+    if (isDuplicate) {
+      if (!window.confirm("Ya existe una tarea con el mismo nombre para esta fecha. ¿Deseas guardarla igualmente?")) {
+        return;
+      }
+    }
+
+    const taskToSave = { ...editingTask, title };
     const exists = data.tasks.find(t => t.id === editingTask.id);
     if (exists) {
-      setData({ ...data, tasks: data.tasks.map(t => t.id === editingTask.id ? editingTask : t) });
+      setData({ ...data, tasks: data.tasks.map(t => t.id === editingTask.id ? taskToSave : t) });
     } else {
-      setData({ ...data, tasks: [...data.tasks, editingTask] });
+      setData({ ...data, tasks: [...data.tasks, taskToSave] });
     }
     setShowModal(false);
   };
@@ -101,9 +130,13 @@ export default function Tasks({ data, setData }) {
   };
 
   const deleteTask = (id) => {
-    setData({ ...data, tasks: data.tasks.filter(t => t.id !== id) });
-    setShowModal(false);
+    // PROTECCIÓN DE BORRADO
+    if (window.confirm("¿Estás seguro de que quieres eliminar esta tarea? Esta acción no se puede deshacer.")) {
+      setData({ ...data, tasks: data.tasks.filter(t => t.id !== id) });
+      setShowModal(false);
+    }
   };
+
 
   const addSubtask = () => {
     const title = prompt("Nombre de la subtarea:");
@@ -115,28 +148,62 @@ export default function Tasks({ data, setData }) {
     }
   };
 
-  return (
-    <div className="page tasks-page">
-      <div className="section-header">
-        <h1>Gestión de Tareas v2.0</h1>
-        <div className="view-toggle">
-          <button className={view === 'all' ? 'active' : ''} onClick={() => setView('all')}>Todas</button>
-          <button className={view === 'today' ? 'active' : ''} onClick={() => setView('today')}>Hoy</button>
-        </div>
-      </div>
+  const handleOpenSchedule = (task, e) => {
+    e.stopPropagation();
+    setTaskToSchedule(task);
+    setShowQuickAdd(true);
+  };
 
-      <div className="tasks-tools">
-        <div className="tool">
-          <Filter size={16} />
-          <select value={filterCat} onChange={e => setFilterCat(e.target.value)}>
-            <option value="Todas">Categorías</option>
-            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
+  const saveQuickEvent = (event) => {
+    setData({
+      ...data,
+      calendarEvents: [...(data.calendarEvents || []), event]
+    });
+  };
+
+  const isScheduled = (taskId) => {
+    return (data.calendarEvents || []).some(e => e.sourceType === 'tasks' && e.sourceId === taskId);
+  };
+
+  return (
+    <div className="page tasks-page page-transition">
+      <div className="section-header">
+        <h1>Gestión de Tareas</h1>
         <button className="add-main" onClick={handleAddTask}><Plus /></button>
       </div>
 
+      <div className="chips-container">
+        <div 
+          className={`chip ${view === 'all' ? 'active' : ''}`} 
+          onClick={() => setView('all')}
+        >
+          Todas
+        </div>
+        <div 
+          className={`chip ${view === 'today' ? 'active' : ''}`} 
+          onClick={() => setView('today')}
+        >
+          Hoy
+        </div>
+        <div 
+          className={`chip ${filterCat === 'Urgente' ? 'active' : ''}`} 
+          onClick={() => setFilterCat(filterCat === 'Urgente' ? 'Todas' : 'Urgente')}
+        >
+          Urgente 🚨
+        </div>
+        {CATEGORIES.map(c => (
+          <div 
+            key={c} 
+            className={`chip ${filterCat === c ? 'active' : ''}`} 
+            onClick={() => setFilterCat(filterCat === c ? 'Todas' : c)}
+          >
+            {c}
+          </div>
+        ))}
+      </div>
+
       <div className="tasks-list">
+
         {filteredTasks.length === 0 && <p className="empty">No hay tareas pendientes aquí.</p>}
         {filteredTasks.map(task => (
           <div key={task.id} className={`task-card ${task.status} ${task.priority.toLowerCase()}`}>
@@ -146,8 +213,14 @@ export default function Tasks({ data, setData }) {
             
             <div className="task-body" onClick={() => { setEditingTask(task); setShowModal(true); }}>
               <div className="task-title-row">
-                <h3>{task.title}</h3>
+                <h3>{data.settings?.privacyMode ? "••••••••" : task.title}</h3>
                 {task.priority === "Alta" && <AlertTriangle size={16} color="#ef4444" />}
+                {isScheduled(task.id) && (
+                  <div className="scheduled-badge">
+                    <Calendar size={10} />
+                    Programado
+                  </div>
+                )}
               </div>
               <div className="task-meta">
                 <span><Calendar size={12} /> {task.deadline}</span>
@@ -167,13 +240,31 @@ export default function Tasks({ data, setData }) {
               )}
             </div>
             
-            <div className="task-status-tag">
-              {task.status === 'en proceso' && <PlayCircle size={18} color="#3b82f6" />}
-              {task.status === 'pendiente' && <Clock size={18} opacity={0.5} />}
+            <div className="task-actions-right">
+              <button className="schedule-item-btn" onClick={(e) => handleOpenSchedule(task, e)}>
+                <Calendar size={18} />
+              </button>
+              <div className="task-status-tag">
+                {task.status === 'en proceso' && <PlayCircle size={18} color="#3b82f6" />}
+                {task.status === 'pendiente' && <Clock size={18} opacity={0.5} />}
+              </div>
             </div>
           </div>
         ))}
       </div>
+
+      <CalendarQuickAdd 
+        isOpen={showQuickAdd}
+        onClose={() => setShowQuickAdd(false)}
+        onSave={saveQuickEvent}
+        data={data}
+        sourceType="tasks"
+        sourceId={taskToSchedule?.id}
+        defaultTitle={taskToSchedule?.title}
+        defaultDescription={taskToSchedule?.description}
+        defaultCategory={taskToSchedule?.category}
+      />
+
 
       {showModal && (
         <div className="modal-overlay">

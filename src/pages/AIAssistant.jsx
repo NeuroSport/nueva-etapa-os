@@ -21,7 +21,9 @@ import {
   ChevronRight
 } from "lucide-react";
 
-export default function AIAssistant({ data }) {
+import CalendarQuickAdd from "../components/CalendarQuickAdd";
+
+export default function AIAssistant({ data, setData }) {
   const [messages, setMessages] = useState([
     {
       role: "assistant",
@@ -33,6 +35,21 @@ export default function AIAssistant({ data }) {
   const [error, setError] = useState(null);
   const scrollRef = useRef(null);
 
+  // Estado para el modal de programación rápida
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [itemToSchedule, setItemToSchedule] = useState(null);
+
+  // UTILIDAD PARA LIMITAR DATOS ENVIADOS A LA IA
+  const getLimitedData = (source, limit = 5) => {
+    if (!source) return "[]";
+    const filtered = source.slice(0, limit).map(item => {
+      // Eliminar campos pesados o innecesarios
+      const { id, notes, description, ...rest } = item;
+      return rest;
+    });
+    return JSON.stringify(filtered);
+  };
+
   // BOTONES MAESTROS DE CONTROL
   const controlButtons = [
     { 
@@ -40,86 +57,92 @@ export default function AIAssistant({ data }) {
       label: "Planificar semana", 
       icon: Calendar, 
       color: "#3b82f6",
-      prompt: `Analiza TODO mi sistema:
-      - Calendario Custodia: ${JSON.stringify(data.daughterSystem.custodyCalendar)}
-      - Tareas Pendientes: ${JSON.stringify(data.tasks.filter(t => t.status !== 'hecho'))}
-      - Objetivos: ${JSON.stringify(data.goals)}
-      Crea una hoja de ruta semanal equilibrada, priorizando los días con mi hija y mis metas estratégicas.`
+      prompt: `Analiza mi sistema (resumen):
+      - Calendario Custodia: ${getLimitedData(data.daughterSystem.custodyCalendar, 7)}
+      - Tareas: ${getLimitedData(data.tasks.filter(t => t.status !== 'hecho'), 10)}
+      - Metas: ${getLimitedData(data.goals, 3)}
+      Crea una hoja de ruta semanal equilibrada.`
     },
     { 
       id: "today", 
       label: "Qué hago hoy", 
       icon: Sparkles, 
       color: "#f59e0b",
-      prompt: `Prioriza mi día de hoy basándote en:
-      - Tareas para hoy: ${JSON.stringify(data.tasks.filter(t => t.plannedDate === new Date().toISOString().split('T')[0]))}
-      - Eventos: ${JSON.stringify(data.calendarEvents)}
-      - Metas: ${JSON.stringify(data.goals)}
-      Dime las 3 acciones clave y calcula si tengo tiempo real para hacerlas.`
+      prompt: `Prioriza hoy:
+      - Tareas Hoy: ${getLimitedData(data.tasks.filter(t => t.plannedDate === new Date().toISOString().split('T')[0]))}
+      - Eventos: ${getLimitedData(data.calendarEvents, 5)}
+      Dime las 3 acciones clave.`
     },
     { 
       id: "daughter", 
       label: "Plan con mi hija", 
       icon: Heart, 
       color: "#ec4899",
-      prompt: `Busca el mejor momento para estar con mi hija. 
-      Datos: ${JSON.stringify(data.daughterSystem)} 
-      Sugiéreme un plan creativo usando mis ideas y mi presupuesto actual de economía.`
+      prompt: `Día con mi hija. 
+      Custodia: ${getLimitedData(data.daughterSystem.custodyCalendar, 3)} 
+      Sugerencia creativa con presupuesto ajustado.`
     },
     { 
       id: "shop", 
       label: "Compra semanal", 
       icon: ShoppingCart, 
       color: "#10b981",
-      prompt: `Cruza mi Menú Semanal (${JSON.stringify(data.weeklyMenu)}) con mi Lista de Compra (${JSON.stringify(data.shoppingList)}). 
-      Dime qué me falta comprar y cómo optimizar el gasto en Consum/Mercadona/Lidl.`
+      prompt: `Optimiza compra:
+      - Menú: ${JSON.stringify(data.weeklyMenuPro).substring(0, 500)}...
+      - Lista: ${getLimitedData(data.shoppingListPro, 10)}`
     },
     { 
       id: "menu", 
       label: "Menú barato", 
       icon: Utensils, 
       color: "#f97316",
-      prompt: `Mi situación económica es: ${JSON.stringify(data.income)} vs ${JSON.stringify(data.expenses)}. 
-      Genérame un menú de 7 días nutritivo pero de bajísimo coste, adaptado al Modo Hija cuando toque.`
+      prompt: `Menú ahorro:
+      - Ingresos: ${data.budgetPro.income}
+      - Gastos Variables: ${getLimitedData(data.expenses, 5)}
+      Genera menú 7 días nutritivo bajo coste.`
     },
     { 
       id: "economy", 
       label: "Revisar economía", 
       icon: Wallet, 
       color: "#6366f1",
-      prompt: `Haz una auditoría de mis finanzas: 
-      - Ingresos: ${JSON.stringify(data.income)}
-      - Gastos fijos/variables: ${JSON.stringify(data.expenses)}
-      - Necesidades pendientes: ${JSON.stringify(data.needs)}
-      ¿Cuál es mi estado de salud financiera real?`
+      prompt: `Auditoría financiera rápida: 
+      - Ingresos: ${data.budgetPro.income}
+      - Gastos: ${getLimitedData(data.expenses, 10)}
+      - Necesidades: ${getLimitedData(data.needs, 5)}
+      Estado de salud financiera real.`
     },
     { 
       id: "stressed", 
       label: "Estoy agobiado", 
       icon: AlertCircle, 
       color: "#ef4444",
-      prompt: `EMERGENCIA: Me siento superado. Analiza mis tareas (${JSON.stringify(data.tasks)}) y objetivos (${JSON.stringify(data.goals)}). 
-      Dime qué 3 cosas puedo ignorar hoy sin consecuencias y en qué única cosa debo enfocarme.`
+      prompt: `EMERGENCIA: Me siento superado.
+      - Tareas: ${getLimitedData(data.tasks, 8)}
+      - Metas: ${getLimitedData(data.goals, 3)}
+      ¿Qué 3 cosas ignoro hoy y en qué me enfoco?`
     },
     { 
       id: "alicante", 
       label: "Plan Alicante", 
       icon: MapPin, 
       color: "#06b6d4",
-      prompt: `Sugiere un plan en Alicante usando mi base de datos: ${JSON.stringify(data.alicantePlans)}. 
-      Ten en cuenta si voy con la niña y mi presupuesto disponible.`
+      prompt: `Sugerencia Alicante:
+      - Mis planes: ${getLimitedData(data.alicantePlans, 5)}
+      Plan para hoy.`
     },
     { 
       id: "sunday", 
       label: "Revisión domingo", 
       icon: RefreshCcw, 
       color: "#8b5cf6",
-      prompt: `Resumen de la semana:
-      - Tareas completadas: ${JSON.stringify(data.tasks.filter(t => t.status === 'hecho'))}
-      - Gastos realizados: ${JSON.stringify(data.expenses.filter(e => e.paid))}
-      Dame feedback sobre mi productividad y ahorro. ¿Qué mejoramos el lunes?`
+      prompt: `Resumen semanal:
+      - Hecho: ${getLimitedData(data.tasks.filter(t => t.status === 'hecho'), 10)}
+      - Pagado: ${getLimitedData(data.expenses.filter(e => e.paid), 10)}
+      Feedback ahorro y productividad.`
     }
   ];
+
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -140,8 +163,10 @@ export default function AIAssistant({ data }) {
     setError(null);
 
     try {
-      const response = await chatWithAI([...messages, { role: "user", content: textToSend }]);
+      const speedInstruction = "Responde de forma muy concisa, directa y estructurada para carga rápida.";
+      const response = await chatWithAI([...messages, { role: "user", content: `${speedInstruction}\n${textToSend}` }]);
       let finalResponse = response;
+
       
       if (customPrompt && controlButtons.find(b => b.prompt === customPrompt).id === 'stressed') {
         finalResponse += "\n\n💡 He activado el análisis de emergencia. Si necesitas silencio total ahora mismo, pulsa el botón de 'MODO FOCO' en tu Dashboard principal.";
@@ -159,8 +184,23 @@ export default function AIAssistant({ data }) {
     }
   };
 
+  const handleOpenSchedule = (title) => {
+    setItemToSchedule({ title });
+    setShowQuickAdd(true);
+  };
+
+  const saveQuickEvent = (event) => {
+    setData({
+      ...data,
+      calendarEvents: [...(data.calendarEvents || []), event]
+    });
+  };
+
+
   return (
-    <div className="page assistant-page">
+    <div className="page assistant-page page-transition">
+
+
       <div className="control-header">
         <div className="status-indicator">
           <Zap size={16} fill="#10b981" color="#10b981" />
@@ -201,7 +241,14 @@ export default function AIAssistant({ data }) {
               <div className="avatar">
                 {msg.role === 'assistant' ? <Bot size={16} /> : <User size={16} />}
               </div>
-              <div className="text">{msg.content}</div>
+              <div className="text-container">
+                <div className="text">{msg.content}</div>
+                {msg.role === 'assistant' && !isLoading && (
+                  <button className="schedule-msg-btn" onClick={() => handleOpenSchedule(msg.content.substring(0, 30) + "...")}>
+                    <Calendar size={14} /> Programar
+                  </button>
+                )}
+              </div>
             </div>
           ))}
           {isLoading && (
@@ -225,6 +272,18 @@ export default function AIAssistant({ data }) {
           </button>
         </div>
       </div>
+
+      <CalendarQuickAdd 
+        isOpen={showQuickAdd}
+        onClose={() => setShowQuickAdd(false)}
+        onSave={saveQuickEvent}
+        data={data}
+        sourceType="ai"
+        sourceId={`msg-${messages.length}`}
+        defaultTitle={itemToSchedule?.title}
+        defaultCategory="IA"
+      />
+
 
       <style>{`
         .assistant-page { padding: 15px; padding-bottom: 90px; max-width: 600px; margin: 0 auto; }
@@ -271,9 +330,27 @@ export default function AIAssistant({ data }) {
         .bubble.user { align-self: flex-end; flex-direction: row-reverse; }
         .bubble .avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--bg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .bubble.user .avatar { background: var(--primary); color: white; }
-        .bubble .text { padding: 12px 16px; border-radius: 18px; font-size: 0.9em; line-height: 1.4; }
+        .text-container { display: flex; flex-direction: column; gap: 5px; max-width: 85%; }
+        .bubble .text { padding: 12px 16px; border-radius: 18px; font-size: 0.9em; line-height: 1.4; width: 100%; }
         .bubble.assistant .text { background: var(--bg); color: var(--text); border-bottom-left-radius: 4px; }
         .bubble.user .text { background: var(--primary); color: white; border-bottom-right-radius: 4px; }
+        
+        .schedule-msg-btn { 
+          align-self: flex-start; 
+          background: none; 
+          border: 1px solid var(--border); 
+          border-radius: 12px; 
+          padding: 4px 10px; 
+          font-size: 0.7em; 
+          font-weight: bold; 
+          display: flex; 
+          align-items: center; 
+          gap: 5px; 
+          color: var(--muted); 
+          cursor: pointer; 
+          transition: all 0.2s; 
+        }
+        .schedule-msg-btn:hover { background: var(--primary); color: white; border-color: var(--primary); }
         
         .bubble.loading { align-items: center; font-style: italic; opacity: 0.7; }
 

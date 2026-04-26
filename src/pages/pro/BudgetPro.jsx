@@ -1,10 +1,15 @@
 import { useState } from "react";
 import Card from "../../components/Card";
-import { Wallet, ArrowDown, ArrowUp, Target, AlertCircle, TrendingDown, PiggyBank } from "lucide-react";
+import { ArrowUp, PiggyBank, Wallet, Calendar, Trash2 } from "lucide-react";
+import CalendarQuickAdd from "../../components/CalendarQuickAdd";
 
 export default function BudgetPro({ data, setData }) {
   const [newFixed, setNewFixed] = useState({ title: "", amount: "" });
   const [newDebt, setNewDebt] = useState({ title: "", amount: "" });
+
+  // Estado para el modal de programación rápida
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [itemToSchedule, setItemToSchedule] = useState(null);
 
   const totalFixed = data.budgetPro.fixedExpenses.reduce((sum, e) => sum + e.amount, 0);
   const totalDaughter = data.custody.daughterExpenses.reduce((sum, e) => sum + e.amount, 0);
@@ -22,16 +27,57 @@ export default function BudgetPro({ data, setData }) {
   };
 
   const addFixed = () => {
-    if (!newFixed.title || !newFixed.amount) return;
+    const title = newFixed.title.trim();
+    const amount = parseFloat(newFixed.amount);
+
+    if (!title || isNaN(amount)) return alert("Nombre y cantidad son obligatorios");
+
+    // PREVENCIÓN DE DUPLICADOS
+    const isDuplicate = data.budgetPro.fixedExpenses.some(e => e.title.toLowerCase() === title.toLowerCase());
+    if (isDuplicate) {
+      if (!window.confirm("Ya existe un gasto fijo con este nombre. ¿Deseas añadirlo igualmente?")) return;
+    }
+
     setData({
       ...data,
       budgetPro: {
         ...data.budgetPro,
-        fixedExpenses: [...data.budgetPro.fixedExpenses, { id: crypto.randomUUID(), title: newFixed.title, amount: parseFloat(newFixed.amount) }]
+        fixedExpenses: [...data.budgetPro.fixedExpenses, { id: crypto.randomUUID(), title, amount }]
       }
     });
     setNewFixed({ title: "", amount: "" });
   };
+
+  const removeFixed = (id) => {
+    if (window.confirm("¿Seguro que quieres eliminar este gasto fijo?")) {
+      setData({
+        ...data,
+        budgetPro: {
+          ...data.budgetPro,
+          fixedExpenses: data.budgetPro.fixedExpenses.filter(e => e.id !== id)
+        }
+      });
+    }
+  };
+
+
+  const handleOpenSchedule = (item, type, e) => {
+    e.stopPropagation();
+    setItemToSchedule({ ...item, type });
+    setShowQuickAdd(true);
+  };
+
+  const saveQuickEvent = (event) => {
+    setData({
+      ...data,
+      calendarEvents: [...(data.calendarEvents || []), event]
+    });
+  };
+
+  const isScheduled = (id, type) => {
+    return (data.calendarEvents || []).some(e => e.sourceType === type && e.sourceId === id);
+  };
+
 
   return (
     <div className="page budget-page">
@@ -69,7 +115,7 @@ export default function BudgetPro({ data, setData }) {
           <Wallet size={24} />
           <div>
             <span>Libre Semanal</span>
-            <strong>{weeklyAvailable.toFixed(2)}€</strong>
+            <strong>{data.settings?.privacyMode ? "•••,••€" : `${weeklyAvailable.toFixed(2)}€`}</strong>
           </div>
         </div>
       </div>
@@ -85,11 +131,20 @@ export default function BudgetPro({ data, setData }) {
             <div className="fixed-list">
               {data.budgetPro.fixedExpenses.map(e => (
                 <div key={e.id} className="budget-item">
-                  <span>{e.title}</span>
-                  <strong>{e.amount}€</strong>
+                  <div className="b-info">
+                    <span>{e.title}</span>
+                    {isScheduled(e.id, 'budget-fixed') && <div className="scheduled-badge min"><Calendar size={8}/></div>}
+                  </div>
+                  <div className="b-actions">
+                    <strong>{data.settings?.privacyMode ? "•••€" : `${e.amount}€`}</strong>
+                    <button className="action-schedule-btn" onClick={(e_opt) => handleOpenSchedule(e, 'budget-fixed', e_opt)}>
+                      <Calendar size={14} />
+                    </button>
+                    <button className="del-btn-min" onClick={() => removeFixed(e.id)}><Trash2 size={12} /></button>
+                  </div>
                 </div>
               ))}
-              <div className="total-row">Total: {totalFixed}€</div>
+              <div className="total-row">Total: {data.settings?.privacyMode ? "••••€" : `${totalFixed}€`}</div>
             </div>
           </Card>
 
@@ -97,8 +152,16 @@ export default function BudgetPro({ data, setData }) {
             <div className="fixed-list">
               {data.budgetPro.debts.map(e => (
                 <div key={e.id} className="budget-item debt">
-                  <span>{e.title}</span>
-                  <strong>{e.amount}€</strong>
+                  <div className="b-info">
+                    <span>{e.title}</span>
+                    {isScheduled(e.id, 'budget-debt') && <div className="scheduled-badge min"><Calendar size={8}/></div>}
+                  </div>
+                  <div className="b-actions">
+                    <strong>{e.amount}€</strong>
+                    <button className="action-schedule-btn" onClick={(e_opt) => handleOpenSchedule(e, 'budget-debt', e_opt)}>
+                      <Calendar size={14} />
+                    </button>
+                  </div>
                 </div>
               ))}
               {data.budgetPro.debts.length === 0 && <p className="empty">Sin deudas registradas. ¡Genial!</p>}
@@ -109,20 +172,32 @@ export default function BudgetPro({ data, setData }) {
         <div className="right-col">
           <Card title="Desglose Mensual">
             <div className="breakdown">
-              <div className="b-item"><span>Gastos Fijos</span> <span>-{totalFixed}€</span></div>
-              <div className="b-item"><span>Gastos Variables</span> <span>-{totalVariable}€</span></div>
-              <div className="b-item"><span>Gastos Hija</span> <span>-{totalDaughter}€</span></div>
-              <div className="b-item"><span>Deudas</span> <span>-{totalDebts}€</span></div>
-              <div className="b-item highlight"><span>Meta Ahorro</span> <span>-{data.budgetPro.savingsGoal}€</span></div>
+              <div className="b-item"><span>Gastos Fijos</span> <span>{data.settings?.privacyMode ? "••••€" : `-${totalFixed}€`}</span></div>
+              <div className="b-item"><span>Gastos Variables</span> <span>{data.settings?.privacyMode ? "••••€" : `-${totalVariable}€`}</span></div>
+              <div className="b-item"><span>Gastos Hija</span> <span>{data.settings?.privacyMode ? "••••€" : `-${totalDaughter}€`}</span></div>
+              <div className="b-item"><span>Deudas</span> <span>{data.settings?.privacyMode ? "••••€" : `-${totalDebts}€`}</span></div>
+              <div className="b-item highlight"><span>Meta Ahorro</span> <span>{data.settings?.privacyMode ? "••••€" : `-${data.budgetPro.savingsGoal}€`}</span></div>
               <hr />
               <div className="b-total" style={{ color: getStatusColor() }}>
                 <span>DINERO DISPONIBLE</span>
-                <span>{netAvailable.toFixed(2)}€</span>
+                <span>{data.settings?.privacyMode ? "••••,••€" : `${netAvailable.toFixed(2)}€`}</span>
               </div>
             </div>
           </Card>
         </div>
       </div>
+
+      <CalendarQuickAdd 
+        isOpen={showQuickAdd}
+        onClose={() => setShowQuickAdd(false)}
+        onSave={saveQuickEvent}
+        data={data}
+        sourceType={itemToSchedule?.type}
+        sourceId={itemToSchedule?.id}
+        defaultTitle={`Pago: ${itemToSchedule?.title}`}
+        defaultCategory="Economía"
+      />
+
 
       <style>{`
         .traffic-light {
@@ -176,10 +251,18 @@ export default function BudgetPro({ data, setData }) {
         .budget-item {
           display: flex;
           justify-content: space-between;
+          align-items: center;
           padding: 10px;
           border-bottom: 1px solid var(--border);
         }
+        .b-info { display: flex; align-items: center; gap: 8px; }
+        .b-actions { display: flex; align-items: center; gap: 10px; }
+        .action-schedule-btn { background: none; border: none; padding: 4px; color: var(--muted); cursor: pointer; opacity: 0.3; }
+        .action-schedule-btn:hover { opacity: 1; color: var(--primary); }
+        .scheduled-badge.min { padding: 2px 4px; border-radius: 4px; }
         .budget-item.debt { color: #ef4444; }
+        .del-btn-min { background: none; border: none; padding: 4px; color: #ef4444; opacity: 0.3; cursor: pointer; transition: all 0.2s; }
+        .del-btn-min:hover { opacity: 1; }
         .total-row { text-align: right; font-weight: bold; padding: 10px; opacity: 0.7; }
         
         .breakdown { display: flex; flex-direction: column; gap: 12px; }

@@ -20,10 +20,16 @@ import {
 const CATEGORIES = ["Salud", "Trabajo", "Finanzas", "Hija", "Personal", "Otros"];
 const STATUSES = ["En curso", "Pausado", "Logrado"];
 
+import CalendarQuickAdd from "../components/CalendarQuickAdd";
+
 export default function Goals({ data, setData }) {
   const [showModal, setShowModal] = useState(false);
   const [editingGoal, setEditingGoal] = useState(null);
   const [filterCat, setFilterCat] = useState("Todas");
+
+  // Estado para el modal de programación rápida
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [itemToSchedule, setItemToSchedule] = useState(null);
 
   // Utilidad de fecha segura
   const formatLocalDate = (date) => {
@@ -58,19 +64,40 @@ export default function Goals({ data, setData }) {
 
   const handleSave = (e) => {
     e.preventDefault();
+    const title = editingGoal.title.trim();
+    const reason = editingGoal.reason.trim();
+
+    // VALIDACIÓN DE INPUTS
+    if (!title) return alert("El título del objetivo es obligatorio");
+    if (!reason) return alert("Debes definir un motivo o motivación");
+    if (title.length > 60) return alert("El título es demasiado largo (máximo 60 caracteres)");
+
+    // PREVENCIÓN DE DUPLICADOS
+    const isDuplicate = data.goals.some(g => 
+      g.id !== editingGoal.id && 
+      g.title.toLowerCase() === title.toLowerCase()
+    );
+
+    if (isDuplicate) {
+      if (!window.confirm("Ya tienes un objetivo con este nombre. ¿Deseas crear otro igual?")) {
+        return;
+      }
+    }
+
+    const goalToSave = { ...editingGoal, title, reason };
     const exists = data.goals.find(g => g.id === editingGoal.id);
     if (exists) {
-      setData({ ...data, goals: data.goals.map(g => g.id === editingGoal.id ? editingGoal : g) });
+      setData({ ...data, goals: data.goals.map(g => g.id === editingGoal.id ? goalToSave : g) });
     } else {
-      setData({ ...data, goals: [...data.goals, editingGoal] });
+      setData({ ...data, goals: [...data.goals, goalToSave] });
     }
     setShowModal(false);
   };
 
   const addMiniAction = () => {
     const title = prompt("Nombre de la mini-acción:");
-    if (title) {
-      const newActions = [...editingGoal.miniActions, { id: crypto.randomUUID(), title, done: false }];
+    if (title && title.trim()) {
+      const newActions = [...editingGoal.miniActions, { id: crypto.randomUUID(), title: title.trim(), done: false }];
       // Auto-calcular progreso basado en acciones
       const progress = Math.round((newActions.filter(a => a.done).length / newActions.length) * 100);
       setEditingGoal({ ...editingGoal, miniActions: newActions, progress });
@@ -92,8 +119,29 @@ export default function Goals({ data, setData }) {
   };
 
   const deleteGoal = (id) => {
-    setData({ ...data, goals: data.goals.filter(g => g.id !== id) });
-    setShowModal(false);
+    // PROTECCIÓN DE BORRADO
+    if (window.confirm("¿Seguro que quieres eliminar este objetivo estratégico? Se borrará todo su progreso y acciones.")) {
+      setData({ ...data, goals: data.goals.filter(g => g.id !== id) });
+      setShowModal(false);
+    }
+  };
+
+
+  const handleOpenSchedule = (item, type, e) => {
+    e.stopPropagation();
+    setItemToSchedule({ ...item, type });
+    setShowQuickAdd(true);
+  };
+
+  const saveQuickEvent = (event) => {
+    setData({
+      ...data,
+      calendarEvents: [...(data.calendarEvents || []), event]
+    });
+  };
+
+  const isScheduled = (id, type) => {
+    return (data.calendarEvents || []).some(e => e.sourceType === type && e.sourceId === id);
   };
 
   return (
@@ -130,25 +178,40 @@ export default function Goals({ data, setData }) {
                 <span>{goal.progress}%</span>
               </div>
               <div className="goal-title-info">
-                <h3>{goal.title}</h3>
+                <div className="title-row">
+                  <h3>{data.settings?.privacyMode ? "••••••••" : goal.title}</h3>
+                  {isScheduled(goal.id, 'goals') && <div className="scheduled-badge"><Calendar size={10}/></div>}
+                </div>
                 <div className="goal-meta">
                   <span><Flag size={12} /> {goal.targetDate}</span>
                   <span className="cat-tag">{goal.category}</span>
                 </div>
               </div>
-              <ChevronRight size={20} opacity={0.3} />
+              <div className="goal-actions">
+                <button className="schedule-item-btn small" onClick={(e) => handleOpenSchedule(goal, 'goals', e)}>
+                  <Calendar size={14} />
+                </button>
+                <ChevronRight size={20} opacity={0.3} />
+              </div>
             </div>
 
             <div className="goal-reason">
-              <strong>Motivo:</strong> {goal.reason}
+              <strong>Motivo:</strong> {data.settings?.privacyMode ? "Censurado por privacidad" : goal.reason}
             </div>
+
 
             {goal.miniActions.length > 0 && (
               <div className="mini-actions-preview">
                 {goal.miniActions.slice(0, 3).map(action => (
-                  <div key={action.id} className="action-item" onClick={() => toggleMiniActionInList(goal.id, action.id)}>
-                    {action.done ? <CheckCircle size={16} color="#10b981" /> : <Circle size={16} color="#94a3b8" />}
-                    <span className={action.done ? 'done' : ''}>{action.title}</span>
+                  <div key={action.id} className="action-row">
+                    <div className="action-item" onClick={() => toggleMiniActionInList(goal.id, action.id)}>
+                      {action.done ? <CheckCircle size={16} color="#10b981" /> : <Circle size={16} color="#94a3b8" />}
+                      <span className={action.done ? 'done' : ''}>{action.title}</span>
+                      {isScheduled(action.id, 'goals-action') && <div className="scheduled-badge min"><Calendar size={8}/></div>}
+                    </div>
+                    <button className="action-schedule-btn" onClick={(e) => handleOpenSchedule(action, 'goals-action', e)}>
+                      <Calendar size={12} />
+                    </button>
                   </div>
                 ))}
                 {goal.miniActions.length > 3 && <div className="more-actions">+{goal.miniActions.length - 3} más...</div>}
@@ -157,6 +220,18 @@ export default function Goals({ data, setData }) {
           </div>
         ))}
       </div>
+
+      <CalendarQuickAdd 
+        isOpen={showQuickAdd}
+        onClose={() => setShowQuickAdd(false)}
+        onSave={saveQuickEvent}
+        data={data}
+        sourceType={itemToSchedule?.type}
+        sourceId={itemToSchedule?.id}
+        defaultTitle={itemToSchedule?.title || itemToSchedule?.name}
+        defaultCategory={itemToSchedule?.category || "Personal"}
+      />
+
 
       {showModal && (
         <div className="modal-overlay">
@@ -292,9 +367,16 @@ export default function Goals({ data, setData }) {
         .goal-reason { font-size: 0.85em; background: var(--bg); padding: 12px; border-radius: 12px; margin-bottom: 15px; line-height: 1.4; }
         
         .mini-actions-preview { display: flex; flex-direction: column; gap: 8px; }
-        .action-item { display: flex; align-items: center; gap: 10px; font-size: 0.85em; cursor: pointer; }
+        .action-row { display: flex; justify-content: space-between; align-items: center; }
+        .action-item { display: flex; align-items: center; gap: 10px; font-size: 0.85em; cursor: pointer; flex-grow: 1; }
         .action-item span.done { text-decoration: line-through; opacity: 0.5; }
+        .action-schedule-btn { background: none; border: none; padding: 4px; color: var(--muted); cursor: pointer; opacity: 0.4; }
+        .action-schedule-btn:hover { opacity: 1; color: var(--primary); }
+        .scheduled-badge.min { padding: 2px 4px; border-radius: 4px; }
         .more-actions { font-size: 0.75em; opacity: 0.4; margin-left: 26px; }
+
+        .goal-actions { display: flex; align-items: center; gap: 10px; }
+        .schedule-item-btn.small { width: 32px; height: 32px; border-radius: 8px; }
 
         /* MODAL */
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: flex-end; justify-content: center; z-index: 1000; }

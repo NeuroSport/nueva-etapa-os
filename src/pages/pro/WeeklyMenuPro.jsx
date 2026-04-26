@@ -1,6 +1,5 @@
-import { useState } from "react";
-import Card from "../../components/Card";
-import { Utensils, Baby, DollarSign, ShoppingBag, Save, Trash2, Plus } from "lucide-react";
+import { Calendar } from "lucide-react";
+import CalendarQuickAdd from "../../components/CalendarQuickAdd";
 
 export default function WeeklyMenuPro({ data, setData }) {
   const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
@@ -8,6 +7,10 @@ export default function WeeklyMenuPro({ data, setData }) {
     monday: "Lunes", tuesday: "Martes", wednesday: "Miércoles", 
     thursday: "Jueves", friday: "Viernes", saturday: "Sábado", sunday: "Domingo"
   };
+
+  // Estado para el modal de programación rápida
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [mealToSchedule, setMealToSchedule] = useState(null);
 
   const updateMenu = (day, field, value) => {
     setData({
@@ -17,6 +20,24 @@ export default function WeeklyMenuPro({ data, setData }) {
         [day]: { ...data.weeklyMenuPro[day], [field]: value }
       }
     });
+  };
+
+  const handleOpenSchedule = (day, type, meal, e) => {
+    e.stopPropagation();
+    setMealToSchedule({ day, type, title: meal });
+    setShowQuickAdd(true);
+  };
+
+  const saveQuickEvent = (event) => {
+    setData({
+      ...data,
+      calendarEvents: [...(data.calendarEvents || []), event]
+    });
+  };
+
+  const isScheduled = (day, type) => {
+    const sourceId = `${day}-${type}`;
+    return (data.calendarEvents || []).some(e => e.sourceType === 'menu' && e.sourceId === sourceId);
   };
 
   const generateShoppingList = () => {
@@ -54,6 +75,7 @@ export default function WeeklyMenuPro({ data, setData }) {
     alert("¡Lista de compra generada! Revisa la sección de Compra PRO.");
   };
 
+
   return (
     <div className="page menu-page">
       <div className="section-header">
@@ -87,27 +109,56 @@ export default function WeeklyMenuPro({ data, setData }) {
 
             <div className="meal-inputs">
               <div className="input-group">
-                <span>Comida</span>
+                <div className="label-row">
+                  <span>Comida</span>
+                  {isScheduled(day, 'lunch') && <div className="scheduled-badge min"><Calendar size={8}/></div>}
+                  {data.weeklyMenuPro[day].lunch && (
+                    <button className="meal-schedule-btn" onClick={(e) => handleOpenSchedule(day, 'lunch', data.weeklyMenuPro[day].lunch, e)}>
+                      <Calendar size={14} />
+                    </button>
+                  )}
+                </div>
                 <input 
                   type="text" 
                   placeholder="¿Qué vas a comer?"
-                  value={data.weeklyMenuPro[day].lunch}
+                  value={data.settings?.privacyMode ? "••••••••" : data.weeklyMenuPro[day].lunch}
                   onChange={e => updateMenu(day, 'lunch', e.target.value)}
                 />
               </div>
               <div className="input-group">
-                <span>Cena</span>
+                <div className="label-row">
+                  <span>Cena</span>
+                  {isScheduled(day, 'dinner') && <div className="scheduled-badge min"><Calendar size={8}/></div>}
+                  {data.weeklyMenuPro[day].dinner && (
+                    <button className="meal-schedule-btn" onClick={(e) => handleOpenSchedule(day, 'dinner', data.weeklyMenuPro[day].dinner, e)}>
+                      <Calendar size={14} />
+                    </button>
+                  )}
+                </div>
                 <input 
                   type="text" 
                   placeholder="¿Qué vas a cenar?"
-                  value={data.weeklyMenuPro[day].dinner}
+                  value={data.settings?.privacyMode ? "••••••••" : data.weeklyMenuPro[day].dinner}
                   onChange={e => updateMenu(day, 'dinner', e.target.value)}
                 />
+
               </div>
             </div>
           </Card>
         ))}
       </div>
+
+      <CalendarQuickAdd 
+        isOpen={showQuickAdd}
+        onClose={() => setShowQuickAdd(false)}
+        onSave={saveQuickEvent}
+        data={data}
+        sourceType="menu"
+        sourceId={mealToSchedule ? `${mealToSchedule.day}-${mealToSchedule.type}` : null}
+        defaultTitle={`Menú: ${mealToSchedule?.title}`}
+        defaultCategory="Hogar"
+      />
+
 
       <style>{`
         .gen-btn {
@@ -158,14 +209,18 @@ export default function WeeklyMenuPro({ data, setData }) {
           flex-direction: column;
           gap: 12px;
         }
-        .input-group span {
+        .label-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+        .label-row span {
           display: block;
           font-size: 0.7em;
           text-transform: uppercase;
           font-weight: bold;
-          margin-bottom: 4px;
+          margin-bottom: 0;
           opacity: 0.6;
         }
+        .meal-schedule-btn { background: none; border: none; padding: 2px; color: var(--muted); cursor: pointer; opacity: 0.4; }
+        .meal-schedule-btn:hover { opacity: 1; color: var(--primary); }
+        .scheduled-badge.min { padding: 2px 4px; border-radius: 4px; }
         .input-group input {
           width: 100%;
           background: var(--bg);

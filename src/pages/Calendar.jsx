@@ -247,7 +247,9 @@ export default function Calendar({ data, setData }) {
   };
 
   return (
-    <div className="page calendar-pro">
+    <div className="page calendar-pro page-transition">
+
+
       <div className="calendar-header">
         <div className="nav-controls">
           <button className="nav-btn" onClick={() => navigate(-1)}><ChevronLeft /></button>
