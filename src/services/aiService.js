@@ -20,13 +20,17 @@ export async function chatWithAI(messages) {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Error en el servidor de IA");
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Error en el servidor de IA (${response.status})`);
     }
 
     const data = await response.json();
     return data.reply;
   } catch (error) {
+    if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
+      console.error("AI Service Connectivity Error:", error);
+      throw new Error("No se pudo conectar con el servidor de IA. Verifica que esté encendido y que la URL en Ajustes sea correcta.");
+    }
     console.error("AI Service Error:", error);
     throw error;
   }
@@ -48,14 +52,19 @@ export async function sendPrompt(prompt) {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Error en el servidor de IA");
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Error en el servidor de IA (${response.status})`);
     }
 
     const data = await response.json();
     return data.reply;
   } catch (error) {
+    if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
+      console.error("AI Prompt Connectivity Error:", error);
+      throw new Error("No se pudo conectar con el servidor de IA. Verifica la configuración en Ajustes.");
+    }
     console.error("AI Prompt Error:", error);
     throw error;
   }
 }
+
