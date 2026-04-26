@@ -14,58 +14,58 @@ import {
 export default function ProDashboard({ setPage }) {
   const modules = [
     { 
-      id: "pro-custody", 
-      title: "Custodia e Hija", 
-      desc: "Calendario, eventos y gastos de la niña.", 
+      id: "daughter", 
+      title: "Hija y Custodia v2.0", 
+      desc: "Gestión completa de la niña y calendario.", 
       icon: Baby,
       color: "#ec4899"
     },
     { 
-      id: "pro-alicante", 
-      title: "Planes Alicante", 
-      desc: "Explorador de planes locales con filtros.", 
+      id: "plans", 
+      title: "Planes Alicante v2.0", 
+      desc: "Guía de ocio inteligente con filtros.", 
       icon: MapPin,
       color: "#3b82f6"
     },
     { 
-      id: "pro-shopping", 
-      title: "Lista Compra PRO", 
-      desc: "Lista inteligente vinculada al menú.", 
+      id: "shopping", 
+      title: "Compra Profesional", 
+      desc: "Lista vinculada a menús y tiendas.", 
       icon: ShoppingCart,
       color: "#10b981"
     },
     { 
-      id: "pro-menu", 
-      title: "Menú Semanal", 
-      desc: "Planifica comidas y genera la compra.", 
+      id: "menu", 
+      title: "Menú Semanal v2.0", 
+      desc: "Planificación de comidas inteligente.", 
       icon: Utensils,
       color: "#f59e0b"
     },
     { 
-      id: "pro-budget", 
-      title: "Presupuesto PRO", 
-      desc: "Control total de ingresos y semáforo.", 
+      id: "economy", 
+      title: "Economía PRO", 
+      desc: "Control total de ingresos y gastos.", 
       icon: TrendingUp,
       color: "#6366f1"
     },
     { 
-      id: "pro-emergency", 
-      title: "Modo Emergencia", 
-      desc: "Filtro de estrés y contactos críticos.", 
+      id: "focus", 
+      title: "Modo Foco Total", 
+      desc: "Elimina el ruido y prioriza hoy.", 
       icon: AlertTriangle,
       color: "#ef4444"
     },
     { 
-      id: "pro-review", 
-      title: "Revisión Semanal", 
-      desc: "Resumen de rendimiento del domingo.", 
+      id: "sunday-review", 
+      title: "Resumen Semanal", 
+      desc: "Tus logros y plan para el lunes.", 
       icon: RefreshCcw,
       color: "#8b5cf6"
     },
     { 
       id: "assistant", 
-      title: "Centro IA", 
-      desc: "IA optimizada con botones de acción.", 
+      title: "Centro de Control IA", 
+      desc: "Tu asistente operativo 360º.", 
       icon: Sparkles,
       color: "#06b6d4"
     }

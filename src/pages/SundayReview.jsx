@@ -17,12 +17,13 @@ import {
 export default function SundayReview({ data, setData, setPage }) {
   // Cálculos de la semana
   const stats = useMemo(() => {
-    const doneTasks = data.tasks.filter(t => t.status === 'hecho');
-    const pendingTasks = data.tasks.filter(t => t.status !== 'hecho');
-    const weeklyExpenses = data.expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
-    const daughterDays = Object.values(data.weeklyMenu).filter(d => d.daughterMode).length;
-    const avgGoalProgress = data.goals.length > 0 
-      ? data.goals.reduce((sum, g) => sum + g.progress, 0) / data.goals.length 
+    const doneTasks = (data.tasks || []).filter(t => t.status === 'hecho');
+    const pendingTasks = (data.tasks || []).filter(t => t.status !== 'hecho');
+    const weeklyExpenses = (data.expenses || []).reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const daughterDays = Object.values(data.weeklyMenu || {}).filter(d => d.daughterMode).length;
+    const goals = data.goals || [];
+    const avgGoalProgress = goals.length > 0 
+      ? goals.reduce((sum, g) => sum + (g.progress || 0), 0) / goals.length 
       : 0;
 
     return {

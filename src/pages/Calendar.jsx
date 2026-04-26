@@ -46,8 +46,8 @@ export default function Calendar({ data, setData }) {
 
   // Combinar eventos de calendario PRO con eventos de Custodia
   const allEvents = useMemo(() => {
-    const proEvents = data.calendarEvents.map(e => ({ ...e, source: 'pro' }));
-    const custodyEvents = data.custody.calendar.map(e => ({
+    const proEvents = (data.calendarEvents || []).map(e => ({ ...e, source: 'pro' }));
+    const custodyEvents = (data.daughterSystem?.custodyCalendar || []).map(e => ({
       id: e.id,
       title: e.title,
       date: e.date,
@@ -110,13 +110,14 @@ export default function Calendar({ data, setData }) {
 
   const saveEvent = (e) => {
     e.preventDefault();
-    const isNew = !data.calendarEvents.find(ev => ev.id === editingEvent.id);
+    const events = data.calendarEvents || [];
+    const isNew = !events.find(ev => ev.id === editingEvent.id);
     if (isNew) {
-      setData({ ...data, calendarEvents: [...data.calendarEvents, editingEvent] });
+      setData({ ...data, calendarEvents: [...events, editingEvent] });
     } else {
       setData({
         ...data,
-        calendarEvents: data.calendarEvents.map(ev => ev.id === editingEvent.id ? editingEvent : ev)
+        calendarEvents: events.map(ev => ev.id === editingEvent.id ? editingEvent : ev)
       });
     }
     setShowModal(false);
@@ -124,7 +125,7 @@ export default function Calendar({ data, setData }) {
   };
 
   const deleteEvent = (id) => {
-    setData({ ...data, calendarEvents: data.calendarEvents.filter(ev => ev.id !== id) });
+    setData({ ...data, calendarEvents: (data.calendarEvents || []).filter(ev => ev.id !== id) });
     setShowModal(false);
   };
 
