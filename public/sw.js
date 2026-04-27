@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nueva-etapa-v2.2-cache'; // Versión actualizada
+const CACHE_NAME = 'nueva-etapa-v2.3-force'; // Versión forzada
 const urlsToCache = [
   '/',
   '/index.html',
@@ -20,12 +20,11 @@ self.addEventListener('activate', event => {
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
+          // Limpieza total de cualquier caché anterior para evitar 404s de assets antiguos
+          return caches.delete(cacheName);
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
 });
 

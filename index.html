@@ -12,27 +12,33 @@
   <body>
     <div id="root"></div>
     <script>
-      // Global error catcher for mobile debugging (White Screen Prevention)
+      // Global error catcher for mobile debugging
       window.onerror = function(message, source, lineno, colno, error) {
-        const errorDiv = document.createElement('div');
-        errorDiv.style.position = 'fixed';
-        errorDiv.style.top = '0';
-        errorDiv.style.left = '0';
-        errorDiv.style.width = '100%';
-        errorDiv.style.background = 'red';
-        errorDiv.style.color = 'white';
-        errorDiv.style.padding = '20px';
-        errorDiv.style.zIndex = '9999';
-        errorDiv.style.fontSize = '12px';
-        errorDiv.style.wordBreak = 'break-all';
-        errorDiv.innerHTML = '<strong>Error Detectado:</strong><br>' + message + '<br><br>Archivo: ' + source + '<br>Línea: ' + lineno;
-        document.body.appendChild(errorDiv);
+        var div = document.createElement('div');
+        div.style.cssText = 'position:fixed;top:0;left:0;width:100%;z-index:99999;background:#900;color:#fff;padding:15px;font-size:11px;word-break:break-all;';
+        div.innerHTML = '<strong>CRITICAL ERROR:</strong> ' + message + '<br>@ ' + source + ':' + lineno + '<br><br><button onclick="location.reload(true)" style="background:white;color:black;padding:5px;border:none;border-radius:4px;">RELOAD</button>';
+        document.body ? document.body.appendChild(div) : window.addEventListener('load', function(){ document.body.appendChild(div); });
         return false;
       };
-      window.onunhandledrejection = function(event) {
-        console.error('Unhandled rejection:', event.reason);
-      };
+      
+      function forceReset() {
+        if(!confirm("Esto limpiará todo el caché y reiniciará la app. ¿Continuar?")) return;
+        localStorage.clear();
+        sessionStorage.clear();
+        if ('caches' in window) {
+          caches.keys().then(function(names) {
+            for (var i = 0; i < names.length; i++) caches.delete(names[i]);
+          });
+        }
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            for(var i = 0; i < registrations.length; i++) registrations[i].unregister();
+          });
+        }
+        location.reload(true);
+      }
     </script>
+    <button onclick="forceReset()" style="position:fixed;bottom:80px;right:10px;z-index:9999;width:40px;height:40px;border-radius:50%;background:rgba(0,0,0,0.5);color:white;border:none;font-size:8px;display:flex;align-items:center;justify-content:center;text-align:center;">RESET<br>CACHÉ</button>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
