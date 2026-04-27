@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader2, Sparkles, CheckAll, Trash2 } from 'lucide-react';
+import { X, Loader2, Sparkles, CheckCheck, Trash2 } from 'lucide-react';
 import { localAI } from '../services/localAIService';
 import { chatWithAI } from '../services/aiService';
 import AISuggestionCard from './AISuggestionCard';
@@ -160,7 +160,7 @@ export default function WeekOptimizerModal({ data, onClose, onApplySuggestion, o
                 <>
                   <div className="global-actions">
                     <button className="accept-all-btn" onClick={handleAcceptAll}>
-                      <CheckAll size={18} /> Aceptar Todas las Sugerencias
+                      <CheckCheck size={18} /> Aceptar Todas las Sugerencias
                     </button>
                   </div>
                   
