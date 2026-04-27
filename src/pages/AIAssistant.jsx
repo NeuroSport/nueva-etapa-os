@@ -26,7 +26,7 @@ import {
 import CalendarQuickAdd from "../components/CalendarQuickAdd";
 import AIWeekPlanner from "../components/AIWeekPlanner";
 
-export default function AIAssistant({ data, setData, setPage }) {
+export default function AIAssistant({ data, setData, setPage, showToast }) {
   const [messages, setMessages] = useState([
     {
       role: "assistant",
@@ -463,7 +463,7 @@ export default function AIAssistant({ data, setData, setPage }) {
           data={data} 
           setData={setData} 
           onClose={() => setShowAIPlanner(false)} 
-          showToast={() => {}} // Pass actual toast if available
+          showToast={showToast}
         />
       )}
     </div>

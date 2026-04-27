@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nueva-etapa-v2.5-force'; // Versión forzada para arreglar setPage y errores IA
+const CACHE_NAME = 'nueva-etapa-v2.6-force'; // Versión forzada para auditoría total de IA y toasts
 const urlsToCache = [
   '/',
   '/index.html',
