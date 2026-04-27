@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nueva-etapa-v2.3-force'; // Versión forzada
+const CACHE_NAME = 'nueva-etapa-v2.4-force'; // Versión forzada para arreglar Sparkles
 const urlsToCache = [
   '/',
   '/index.html',
