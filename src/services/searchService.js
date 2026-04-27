@@ -85,7 +85,10 @@ export const searchService = {
     try {
       const res = await fetch(url, {
         method: "POST",
-        body: query
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: `data=${encodeURIComponent(query)}`
       });
       if (!res.ok) throw new Error("Overpass devolvió error");
       const data = await res.json();
