@@ -153,7 +153,7 @@ function App() {
                 {t.type === 'success' && <CheckCircle size={18} />}
                 {t.type === 'error' && <AlertCircle size={18} />}
                 {t.type === 'info' && <Info size={18} />}
-                {t.message}
+                <span>{t.message}</span>
               </div>
             ))}
           </div>
