@@ -9,6 +9,7 @@ export default function Dashboard({ data, setData, setPage, showToast }) {
   const [showAIPlanner, setShowAIPlanner] = useState(false);
   const pendingTasks = data.tasks.filter((task) => task.status !== 'hecho');
   const totalExpenses = data.expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const savedPlans = data.savedPlans || [];
 
   const handleQuickTaskAdd = (e) => {
     e.preventDefault();
@@ -137,6 +138,27 @@ export default function Dashboard({ data, setData, setPage, showToast }) {
         )}
       </Card>
 
+      {savedPlans.length > 0 && (
+        <Card title="Planes Guardados">
+          <div className="saved-plans-dash">
+            {savedPlans.slice(0, 3).map(plan => (
+              <div key={plan.id} className="saved-plan-item" onClick={() => setPage('pro-alicante')}>
+                <Heart size={16} fill="#db2777" color="#db2777" />
+                <div className="plan-info">
+                  <strong>{plan.title}</strong>
+                  <span>{plan.location} • {plan.priceLevel}</span>
+                </div>
+              </div>
+            ))}
+            {savedPlans.length > 3 && (
+              <button className="view-all-plans" onClick={() => setPage('pro-alicante')}>
+                Ver todos ({savedPlans.length})
+              </button>
+            )}
+          </div>
+        </Card>
+      )}
+
       <style>{`
         .dashboard-page { padding: 20px; background: #f8fafc; min-height: 100vh; padding-bottom: 120px; }
         .v2-badge { background: #1e293b; color: white; font-size: 0.6em; font-weight: 800; padding: 4px 10px; border-radius: 20px; display: inline-block; margin-bottom: 10px; letter-spacing: 1px; }
@@ -169,6 +191,13 @@ export default function Dashboard({ data, setData, setPage, showToast }) {
         .dash-task-item span { font-size: 0.95em; color: #334155; }
         
         .empty-msg { text-align: center; padding: 20px 0; color: #94a3b8; font-size: 0.9em; }
+
+        .saved-plans-dash { display: flex; flex-direction: column; gap: 10px; }
+        .saved-plan-item { display: flex; align-items: center; gap: 12px; background: #fdf2f8; padding: 12px; border-radius: 12px; cursor: pointer; border: 1px solid #fbcfe8; }
+        .plan-info { display: flex; flex-direction: column; }
+        .plan-info strong { font-size: 0.85em; color: #831843; }
+        .plan-info span { font-size: 0.7em; color: #be185d; opacity: 0.8; }
+        .view-all-plans { background: none; border: none; color: #db2777; font-size: 0.8em; font-weight: bold; margin-top: 5px; cursor: pointer; text-align: left; }
 
         .ai-planner-hero { 
           background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); 

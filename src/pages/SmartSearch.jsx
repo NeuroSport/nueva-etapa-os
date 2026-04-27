@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import Card from '../components/Card';
+import { generateId } from '../utils';
 import { 
   Search, MapPin, Baby, Euro, CloudRain, Sun, 
-  Clock, Calendar, Star, Brain, Navigation, ChevronRight, X
+  Clock, Calendar, Star, Brain, Navigation, ChevronRight, X, Heart, Map
 } from 'lucide-react';
 import { searchService } from '../services/searchService';
 
@@ -10,11 +11,14 @@ export default function SmartSearch({ data, setData, showToast }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchStatus, setSearchStatus] = useState("");
   const [filters, setFilters] = useState({
     withKid: true,
     budget: 'barato',
     weather: 'sol',
-    zone: 'Alicante Capital'
+    zone: 'Alicante Capital',
+    type: 'ocio',
+    duration: 'media'
   });
 
   const handleSearch = async (quickQuery = null) => {
@@ -22,12 +26,15 @@ export default function SmartSearch({ data, setData, showToast }) {
     if (!q.trim()) return;
     
     setIsSearching(true);
-    setResults([]); // Limpiar previos
+    setSearchStatus("Iniciando buscador híbrido...");
+    setResults([]);
     try {
-      const found = await searchService.search(q, filters, {
-        budget: data.settings?.privacyMode ? "medio" : "bajo",
-        energy: "alta"
-      });
+      const found = await searchService.search(
+        q, 
+        filters, 
+        data.alicantePlans || [], 
+        (status) => setSearchStatus(status)
+      );
       setResults(found);
     } catch (e) {
       showToast("Error en la búsqueda inteligente", "error");
@@ -38,18 +45,41 @@ export default function SmartSearch({ data, setData, showToast }) {
 
   const scheduleEvent = (item) => {
     const newEvent = {
-      id: Date.now(),
+      id: generateId(),
       title: item.title,
       date: new Date().toISOString().split('T')[0],
       startTime: item.suggestedTime || "11:00",
       endTime: "13:00",
       category: "Ocio",
-      notes: `${item.description}\nUbicación: ${item.location}`,
+      notes: `${item.description}\nUbicación: ${item.location}\nFuente: ${item.source || 'IA'}`,
       important: false,
-      completed: false
+      completed: false,
+      source: 'search'
     };
     setData({ ...data, calendarEvents: [...(data.calendarEvents || []), newEvent] });
     showToast("Añadido al calendario", "success");
+  };
+
+  const saveFavorite = (item) => {
+    const saved = data.savedPlans || [];
+    if (saved.find(p => p.id === item.id || p.title === item.title)) {
+      showToast("Este plan ya está en favoritos", "info");
+      return;
+    }
+    
+    const newSaved = {
+      ...item,
+      id: item.id || generateId(),
+      savedAt: new Date().toISOString().split('T')[0],
+      favorite: true
+    };
+    
+    setData({ ...data, savedPlans: [...saved, newSaved] });
+    showToast("Guardado en favoritos", "success");
+  };
+
+  const openMap = (lat, lon) => {
+    window.open(`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=17/${lat}/${lon}`, '_blank');
   };
 
   const quickButtons = [
@@ -83,16 +113,38 @@ export default function SmartSearch({ data, setData, showToast }) {
 
       <div className="filter-section">
         <div className="filter-scroll">
+          <select className="f-select" value={filters.zone} onChange={e => setFilters({...filters, zone: e.target.value})}>
+            <option value="Alicante Capital">Alicante Capital</option>
+            <option value="Alicante Provincia">Provincia (Alrededores)</option>
+          </select>
+
           <button className={`f-pill ${filters.withKid ? 'active' : ''}`} onClick={() => setFilters({...filters, withKid: !filters.withKid})}>
-            <Baby size={14} /> Con Niña
+            <Baby size={14} /> {filters.withKid ? 'Con Niña' : 'Solo / Adultos'}
           </button>
+          
           <button className={`f-pill ${filters.weather === 'lluvia' ? 'active' : ''}`} onClick={() => setFilters({...filters, weather: filters.weather === 'lluvia' ? 'sol' : 'lluvia'})}>
-            {filters.weather === 'lluvia' ? <CloudRain size={14} /> : <Sun size={14} />} Interior
+            {filters.weather === 'lluvia' ? <CloudRain size={14} /> : <Sun size={14} />} {filters.weather === 'lluvia' ? 'Interior / Apto Lluvia' : 'Cualquiera / Exterior'}
           </button>
+          
           <select className="f-select" value={filters.budget} onChange={e => setFilters({...filters, budget: e.target.value})}>
-            <option value="gratis">Gratis</option>
-            <option value="barato">Económico</option>
+            <option value="gratis">Gratis 100%</option>
+            <option value="barato">Barato / Económico</option>
             <option value="medio">Presupuesto Medio</option>
+          </select>
+
+          <select className="f-select" value={filters.duration} onChange={e => setFilters({...filters, duration: e.target.value})}>
+            <option value="corta">Corta (1-2h)</option>
+            <option value="media">Media (Medio día)</option>
+            <option value="larga">Larga (Día completo)</option>
+          </select>
+          
+          <select className="f-select" value={filters.type} onChange={e => setFilters({...filters, type: e.target.value})}>
+            <option value="ocio">Cualquier Ocio</option>
+            <option value="parque">Parque / Naturaleza</option>
+            <option value="museo">Museo / Cultura</option>
+            <option value="restaurante">Restaurante / Comida</option>
+            <option value="ruta">Ruta Senderismo</option>
+            <option value="playa">Playa / Costa</option>
           </select>
         </div>
       </div>
@@ -110,7 +162,7 @@ export default function SmartSearch({ data, setData, showToast }) {
         {isSearching && (
           <div className="searching-state">
             <Brain className="pulse-icon" size={40} color="#6366f1" />
-            <p>La IA está rastreando opciones para ti...</p>
+            <p>{searchStatus || "La IA está rastreando opciones para ti..."}</p>
           </div>
         )}
 
@@ -122,13 +174,28 @@ export default function SmartSearch({ data, setData, showToast }) {
                 <span className="res-type">{res.type}</span>
               </div>
               <p className="res-desc">{res.description}</p>
-              <div className="res-meta">
-                <div className="meta-item"><MapPin size={12} /> {res.location}</div>
-                <div className="meta-item"><Euro size={12} /> {res.priceLevel}</div>
-                <div className="meta-item"><Clock size={12} /> {res.duration}</div>
+              
+              <div className="res-meta-tags">
+                <div className="meta-tag"><MapPin size={12} /> {res.location}</div>
+                <div className="meta-tag"><Euro size={12} /> {res.priceLevel}</div>
+                <div className="meta-tag"><Clock size={12} /> {res.duration}</div>
+                {res.suitableForKids && <div className="meta-tag"><Baby size={12} /> Niños ✓</div>}
+                {res.indoor && <div className="meta-tag"><CloudRain size={12} /> Interior ✓</div>}
               </div>
+
+              <div className="res-source">
+                Fuente de datos: <strong>{res.source || 'IA'}</strong>
+              </div>
+              
               <div className="res-actions">
-                <button className="btn-save"><Star size={16} /> Guardar</button>
+                <button className="btn-save" onClick={() => saveFavorite(res)}>
+                  <Heart size={16} /> Guardar
+                </button>
+                {res.lat && res.lon && (
+                  <button className="btn-map" onClick={() => openMap(res.lat, res.lon)}>
+                    <Map size={16} /> Mapa
+                  </button>
+                )}
                 <button className="btn-plan" onClick={() => scheduleEvent(res)}>
                   <Calendar size={16} /> Programar
                 </button>
@@ -182,12 +249,16 @@ export default function SmartSearch({ data, setData, showToast }) {
         .res-header h3 { margin: 0; font-size: 1.1rem; color: #1e293b; font-weight: 800; }
         .res-type { font-size: 0.6em; background: #e0f2fe; padding: 4px 10px; border-radius: 8px; font-weight: 900; color: #0369a1; text-transform: uppercase; }
         .res-desc { font-size: 0.85em; margin: 0; line-height: 1.4; color: #475569; }
-        .res-meta { display: flex; flex-wrap: wrap; gap: 15px; padding: 10px; background: #f8fafc; border-radius: 12px; }
-        .meta-item { display: flex; align-items: center; gap: 6px; font-size: 0.7em; font-weight: 700; color: #64748b; }
         
-        .res-actions { display: flex; gap: 10px; margin-top: 5px; }
-        .res-actions button { flex: 1; padding: 14px; border-radius: 14px; border: none; font-size: 0.8em; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; }
-        .btn-save { background: #f1f5f9; color: #475569; }
+        .res-meta-tags { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px; background: #f8fafc; border-radius: 12px; }
+        .meta-tag { display: flex; align-items: center; gap: 4px; font-size: 0.7em; font-weight: 700; color: #64748b; background: white; padding: 4px 8px; border-radius: 6px; border: 1px solid #e2e8f0; }
+        
+        .res-source { font-size: 0.65em; text-align: right; color: #94a3b8; font-style: italic; }
+        
+        .res-actions { display: flex; gap: 8px; margin-top: 5px; }
+        .res-actions button { flex: 1; padding: 12px 5px; border-radius: 12px; border: none; font-size: 0.75em; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s; cursor: pointer; }
+        .btn-save { background: #fce7f3; color: #db2777; }
+        .btn-map { background: #e0f2fe; color: #0284c7; }
         .btn-plan { background: #1e293b; color: white; box-shadow: 0 4px 12px rgba(30, 41, 59, 0.2); }
         .btn-plan:active { transform: scale(0.95); }
 

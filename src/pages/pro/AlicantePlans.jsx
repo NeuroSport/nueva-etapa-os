@@ -1,4 +1,5 @@
-import { Calendar } from "lucide-react";
+import { useState } from "react";
+import { Calendar, Search, CloudRain, Baby, Trash2, Euro, MapPin, ExternalLink, Plus, Heart } from "lucide-react";
 import CalendarQuickAdd from "../../components/CalendarQuickAdd";
 
 export default function AlicantePlans({ data, setData }) {
@@ -10,9 +11,10 @@ export default function AlicantePlans({ data, setData }) {
     kidsFriendly: false
   });
 
-  // Estado para el modal de programación rápida
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [planToSchedule, setPlanToSchedule] = useState(null);
+
+  const savedPlans = data.savedPlans || [];
 
   const filteredPlans = data.alicantePlans.filter(plan => {
     const matchesSearch = plan.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -101,6 +103,45 @@ export default function AlicantePlans({ data, setData }) {
         </div>
       </div>
 
+      {savedPlans.length > 0 && (
+        <div className="favorites-section">
+          <h2><Heart size={20} fill="#db2777" color="#db2777" /> Mis Planes Guardados</h2>
+          <div className="plans-grid">
+            {savedPlans.map(plan => (
+              <div key={plan.id} className="plan-card favorite-card">
+                <div className="plan-header">
+                  <div className="type-badge fav-badge">Favorito</div>
+                  <div className="p-actions">
+                    <button className="action-schedule-btn" onClick={(e) => handleOpenSchedule(plan, e)}>
+                      <Calendar size={18} />
+                    </button>
+                    <button onClick={() => {
+                      setData({ ...data, savedPlans: savedPlans.filter(p => p.id !== plan.id) });
+                    }} className="del-btn"><Trash2 size={16} /></button>
+                  </div>
+                </div>
+                
+                <div className="title-row">
+                  <h3>{plan.title}</h3>
+                </div>
+                
+                <div className="plan-info">
+                  <div className="info-item"><MapPin size={14} /> {plan.location}</div>
+                  <div className="info-item"><Euro size={14} /> {plan.priceLevel}</div>
+                </div>
+
+                <p className="notes">{plan.description}</p>
+              </div>
+            ))}
+          </div>
+          <hr className="divider" />
+        </div>
+      )}
+
+      <div className="section-header-small">
+        <h2>Catálogo Local</h2>
+      </div>
+
       <div className="plans-grid">
         {filteredPlans.map(plan => (
           <div key={plan.id} className="plan-card">
@@ -160,7 +201,6 @@ export default function AlicantePlans({ data, setData }) {
         defaultCategory={planToSchedule?.kidsFriendly ? "Hija" : "Ocio"}
       />
 
-
       <style>{`
         .controls-box {
           background: var(--card);
@@ -172,6 +212,13 @@ export default function AlicantePlans({ data, setData }) {
           flex-direction: column;
           gap: 15px;
         }
+        .favorites-section { margin-bottom: 30px; }
+        .favorites-section h2 { display: flex; align-items: center; gap: 10px; font-size: 1.2rem; margin-bottom: 15px; color: #831843; }
+        .favorite-card { border: 2px solid #fbcfe8 !important; background: #fdf2f8 !important; }
+        .fav-badge { background: #db2777 !important; color: white !important; }
+        .divider { border: 0; height: 1px; background: var(--border); margin: 30px 0; }
+        .section-header-small h2 { font-size: 1.1rem; margin-bottom: 15px; opacity: 0.8; }
+
         .search-bar {
           display: flex;
           align-items: center;
