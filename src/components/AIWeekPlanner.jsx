@@ -65,7 +65,10 @@ export default function AIWeekPlanner({ data, setData, onClose, showToast }) {
 
     try {
       let response;
-      if (activeMode === 'local' && localAI.getLoaded()) {
+      if (activeMode === 'local') {
+        if (!localAI.getLoaded()) {
+          throw new Error("La IA Local no está cargada. Ve a 'Configuración IA' en el menú principal para iniciarla.");
+        }
         response = await localAI.generate([{ role: "user", content: prompt }]);
       } else {
         response = await chatWithAI([{ role: "user", content: prompt }]);
@@ -82,7 +85,7 @@ export default function AIWeekPlanner({ data, setData, onClose, showToast }) {
       }
     } catch (error) {
       console.error(error);
-      showToast("Error generando plan: " + error.message, "error");
+      showToast(`Error IA (${activeMode}): ` + error.message, "error");
       setStep('settings');
     }
   };

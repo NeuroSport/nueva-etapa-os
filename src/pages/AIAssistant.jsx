@@ -26,7 +26,7 @@ import {
 import CalendarQuickAdd from "../components/CalendarQuickAdd";
 import AIWeekPlanner from "../components/AIWeekPlanner";
 
-export default function AIAssistant({ data, setData }) {
+export default function AIAssistant({ data, setData, setPage }) {
   const [messages, setMessages] = useState([
     {
       role: "assistant",
@@ -168,28 +168,29 @@ export default function AIAssistant({ data, setData }) {
 
     try {
       const speedInstruction = "Responde de forma muy concisa, directa y estructurada para carga rápida.";
+      const fullPrompt = `${speedInstruction}\n${textToSend}`;
       const activeMode = localStorage.getItem("active_ai_mode") || "remote";
       
       let finalResponse = "";
 
-      if (activeMode === 'local' && localAI.getLoaded()) {
-        // MODO LOCAL (Soberanía Total)
+      if (activeMode === 'local') {
+        if (!localAI.getLoaded()) {
+          throw new Error("La IA Local no está cargada. Iníciala primero en la Configuración IA.");
+        }
         setMessages(prev => [...prev, { role: "assistant", content: "..." }]);
         finalResponse = await localAI.generate(
-          [...messages, { role: "user", content: `${speedInstruction}\n${textToSend}` }],
-          (update) => {
+          [{ role: "user", content: fullPrompt }],
+          (chunk) => {
             setMessages(prev => {
-              const last = prev[prev.length - 1];
-              if (last.role === 'assistant') {
-                return [...prev.slice(0, -1), { ...last, content: update }];
-              }
-              return prev;
+              const newMsgs = [...prev];
+              newMsgs[newMsgs.length - 1].content = chunk;
+              return newMsgs;
             });
           }
         );
       } else {
         // MODO REMOTO (Servidor PC)
-        const response = await chatWithAI([...messages, { role: "user", content: `${speedInstruction}\n${textToSend}` }]);
+        const response = await chatWithAI([{ role: "user", content: fullPrompt }]);
         finalResponse = response;
         
         if (customPrompt && controlButtons.find(b => b.prompt === customPrompt).id === 'stressed') {

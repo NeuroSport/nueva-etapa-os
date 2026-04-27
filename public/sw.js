@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nueva-etapa-v2.4-force'; // Versión forzada para arreglar Sparkles
+const CACHE_NAME = 'nueva-etapa-v2.5-force'; // Versión forzada para arreglar setPage y errores IA
 const urlsToCache = [
   '/',
   '/index.html',

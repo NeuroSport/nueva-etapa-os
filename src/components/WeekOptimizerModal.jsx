@@ -83,7 +83,10 @@ export default function WeekOptimizerModal({ data, onClose, onApplySuggestion, o
 
     try {
       let response = "";
-      if (activeMode === 'local' && localAI.getLoaded()) {
+      if (activeMode === 'local') {
+        if (!localAI.getLoaded()) {
+          throw new Error("La IA Local no está cargada. Ve a 'Configuración IA' en el menú principal para iniciarla.");
+        }
         response = await localAI.generate([{ role: "user", content: prompt }]);
       } else {
         response = await chatWithAI([{ role: "user", content: prompt }]);
@@ -100,7 +103,7 @@ export default function WeekOptimizerModal({ data, onClose, onApplySuggestion, o
 
     } catch (err) {
       console.error("Optimizer Error:", err);
-      setErrorMsg("No he podido conectar con la IA. Puedes seguir usando el calendario manualmente.");
+      setErrorMsg(`Error conectando con la IA (${activeMode}): ${err.message}`);
       setStep('error');
     }
   };
