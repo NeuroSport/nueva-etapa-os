@@ -3,7 +3,7 @@ import Card from '../components/Card';
 import { generateId } from '../utils';
 import { 
   Search, MapPin, Baby, Euro, CloudRain, Sun, 
-  Clock, Calendar, Star, Brain, Navigation, ChevronRight, X, Heart, Map
+  Clock, Calendar, Star, Brain, Navigation, ChevronRight, X, Heart, Map, Sparkles
 } from 'lucide-react';
 import { searchService } from '../services/searchService';
 
