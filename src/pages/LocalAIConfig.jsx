@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import Card from "../components/Card";
-import { Cpu, Download, Zap, ShieldCheck, AlertTriangle, CheckCircle, Trash2, Smartphone } from "lucide-react";
+import { Cpu, Download, Zap, ShieldCheck, AlertTriangle, CheckCircle, Trash2, Smartphone, ArrowLeft } from "lucide-react";
 import { localAI } from "../services/localAIService";
 
-export default function LocalAIConfig() {
+export default function LocalAIConfig({ setPage }) {
   const [supportWebGPU, setSupportWebGPU] = useState(null);
   const [loadingProgress, setLoadingProgress] = useState("");
   const [isLoaded, setIsLoaded] = useState(localAI.getLoaded());
@@ -48,6 +48,9 @@ export default function LocalAIConfig() {
   return (
     <div className="page local-ai-page page-transition">
       <div className="section-header">
+        <button className="back-btn-minimal" onClick={() => setPage('settings')}>
+          <ArrowLeft size={20} /> Volver a Ajustes
+        </button>
         <h1>Soberanía Digital: IA Local</h1>
         <p>Ejecuta inteligencia artificial 100% privada dentro de este móvil.</p>
       </div>
@@ -162,6 +165,7 @@ export default function LocalAIConfig() {
         .delete-model-btn { margin-top: 15px; background: none; border: none; color: #ef4444; font-size: 0.8em; display: flex; align-items: center; gap: 5px; opacity: 0.7; }
         
         .mt-10 { margin-top: 10px; }
+        .back-btn-minimal { display: flex; align-items: center; gap: 8px; background: none; border: none; color: var(--primary); font-weight: bold; font-size: 0.9em; padding: 0; margin-bottom: 15px; cursor: pointer; }
       `}</style>
     </div>
   );
