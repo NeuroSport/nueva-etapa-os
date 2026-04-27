@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { generateId } from "../utils";
 import Card from "../components/Card";
 import { 
   Baby, 
@@ -68,7 +69,7 @@ export default function Daughter({ data, setData }) {
   const openModal = (type, item = null) => {
     setModalType(type);
     setEditingItem(item || {
-      id: crypto.randomUUID(),
+      id: generateId(),
       title: "",
       date: todayStr,
       type: type === 'custody' ? 'conmigo' : 'ocio',

@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { generateId } from "../utils";
 import Card from "../components/Card";
 import { 
   AlertCircle, 
@@ -64,7 +65,7 @@ export default function Needs({ data, setData }) {
 
   const handleAddItem = () => {
     setEditingItem({
-      id: crypto.randomUUID(),
+      id: generateId(),
       title: "",
       description: "",
       cost: "",

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import Card from "../components/Card";
 import { chatWithAI } from "../services/aiService";
+import { localAI } from "../services/localAIService";
 import { 
   Send, 
   Bot, 
@@ -164,21 +165,43 @@ export default function AIAssistant({ data, setData }) {
 
     try {
       const speedInstruction = "Responde de forma muy concisa, directa y estructurada para carga rápida.";
-      const response = await chatWithAI([...messages, { role: "user", content: `${speedInstruction}\n${textToSend}` }]);
-      let finalResponse = response;
-
+      const activeMode = localStorage.getItem("active_ai_mode") || "remote";
       
-      if (customPrompt && controlButtons.find(b => b.prompt === customPrompt).id === 'stressed') {
-        finalResponse += "\n\n💡 He activado el análisis de emergencia. Si necesitas silencio total ahora mismo, pulsa el botón de 'MODO FOCO' en tu Dashboard principal.";
-      }
-      
-      if (customPrompt && controlButtons.find(b => b.prompt === customPrompt).id === 'sunday') {
-        finalResponse += "\n\n📊 He preparado un informe visual de tus logros de la semana. ¿Quieres verlo?";
-      }
+      let finalResponse = "";
 
-      setMessages(prev => [...prev, { role: "assistant", content: finalResponse }]);
+      if (activeMode === 'local' && localAI.getLoaded()) {
+        // MODO LOCAL (Soberanía Total)
+        setMessages(prev => [...prev, { role: "assistant", content: "..." }]);
+        finalResponse = await localAI.generate(
+          [...messages, { role: "user", content: `${speedInstruction}\n${textToSend}` }],
+          (update) => {
+            setMessages(prev => {
+              const last = prev[prev.length - 1];
+              if (last.role === 'assistant') {
+                return [...prev.slice(0, -1), { ...last, content: update }];
+              }
+              return prev;
+            });
+          }
+        );
+      } else {
+        // MODO REMOTO (Servidor PC)
+        const response = await chatWithAI([...messages, { role: "user", content: `${speedInstruction}\n${textToSend}` }]);
+        finalResponse = response;
+        
+        if (customPrompt && controlButtons.find(b => b.prompt === customPrompt).id === 'stressed') {
+          finalResponse += "\n\n💡 He activado el análisis de emergencia. Si necesitas silencio total ahora mismo, pulsa el botón de 'MODO FOCO' en tu Dashboard principal.";
+        }
+        
+        if (customPrompt && controlButtons.find(b => b.prompt === customPrompt).id === 'sunday') {
+          finalResponse += "\n\n📊 He preparado un informe visual de tus logros de la semana. ¿Quieres verlo?";
+        }
+
+        setMessages(prev => [...prev, { role: "assistant", content: finalResponse }]);
+      }
     } catch (err) {
-      setError("Error de conexión. Asegúrate de que el servidor IA esté activo (puerto 3001).");
+      console.error(err);
+      setError(err.message || "Error de conexión. Asegúrate de que el servidor IA esté activo.");
     } finally {
       setIsLoading(false);
     }

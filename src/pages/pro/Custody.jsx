@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { generateId } from "../../utils";
 import Card from "../../components/Card";
 import { Calendar as CalendarIcon, Heart, Baby, Plus, Trash2, DollarSign, Stethoscope, School } from "lucide-react";
 
@@ -9,7 +10,7 @@ export default function Custody({ data, setData }) {
   const addExpense = () => {
     if (!newExpense.title || !newExpense.amount) return;
     const expense = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       ...newExpense,
       amount: parseFloat(newExpense.amount),
       date: new Date().toISOString().split('T')[0]
@@ -30,7 +31,7 @@ export default function Custody({ data, setData }) {
       ...data,
       custody: {
         ...data.custody,
-        calendar: [...data.custody.calendar, { ...newEvent, id: crypto.randomUUID() }]
+        calendar: [...data.custody.calendar, { ...newEvent, id: generateId() }]
       }
     });
     setNewEvent({ date: "", title: "", type: "hija" });

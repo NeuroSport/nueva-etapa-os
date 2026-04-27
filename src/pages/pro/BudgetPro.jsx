@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { generateId } from "../../utils";
 import Card from "../../components/Card";
 import { ArrowUp, PiggyBank, Wallet, Calendar, Trash2 } from "lucide-react";
 import CalendarQuickAdd from "../../components/CalendarQuickAdd";
@@ -42,7 +43,7 @@ export default function BudgetPro({ data, setData }) {
       ...data,
       budgetPro: {
         ...data.budgetPro,
-        fixedExpenses: [...data.budgetPro.fixedExpenses, { id: crypto.randomUUID(), title, amount }]
+        fixedExpenses: [...data.budgetPro.fixedExpenses, { id: generateId(), title, amount }]
       }
     });
     setNewFixed({ title: "", amount: "" });

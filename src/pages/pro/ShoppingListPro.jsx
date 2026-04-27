@@ -1,5 +1,8 @@
-import { Calendar } from "lucide-react";
+import { useState } from "react";
+import { Calendar, Euro, Plus, CheckCircle, Circle, Tag, Star, Trash2 } from "lucide-react";
+import { generateId } from "../../utils";
 import CalendarQuickAdd from "../../components/CalendarQuickAdd";
+import Card from "../../components/Card";
 
 export default function ShoppingListPro({ data, setData }) {
   const [newItem, setNewItem] = useState({ item: "", category: "Supermercado", amount: "1", estimatedPrice: "" });
@@ -27,7 +30,7 @@ export default function ShoppingListPro({ data, setData }) {
     }
 
     const item = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       ...newItem,
       item: itemName,
       estimatedPrice: parseFloat(newItem.estimatedPrice) || 0,

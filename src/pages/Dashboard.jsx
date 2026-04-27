@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { generateId } from "../utils";
 import Card from "../components/Card";
 import { Zap, ShieldCheck, TrendingUp, Calendar, Heart, Wallet, Plus, CheckSquare, Euro, Star } from "lucide-react";
 
@@ -12,7 +13,7 @@ export default function Dashboard({ data, setData, setPage, showToast }) {
     if (!quickTask.trim()) return;
     
     const newTask = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       title: quickTask,
       plannedDate: new Date().toISOString().split('T')[0],
       status: 'pendiente',

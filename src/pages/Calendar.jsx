@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { generateId } from "../utils";
 import Card from "../components/Card";
 import { 
   ChevronLeft, 
@@ -91,7 +92,7 @@ export default function Calendar({ data, setData }) {
 
   const handleAddEvent = (initialData = {}) => {
     setEditingEvent({
-      id: crypto.randomUUID(),
+      id: generateId(),
       title: "",
       description: "",
       date: formatLocalDate(currentDate),

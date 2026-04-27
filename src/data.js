@@ -1,7 +1,9 @@
+import { generateId } from "./utils";
+
 export const initialData = {
   tasks: [
     {
-      id: crypto.randomUUID(),
+      id: generateId(),
       title: "Revisar planificación semanal",
       description: "Analizar los objetivos de la semana y ajustar prioridades.",
       category: "Personal",
@@ -17,7 +19,7 @@ export const initialData = {
   ],
   income: [
     {
-      id: crypto.randomUUID(),
+      id: generateId(),
       title: "Nómina",
       amount: 0,
       date: new Date().toISOString().split('T')[0],
@@ -28,7 +30,7 @@ export const initialData = {
   ],
   expenses: [
     {
-      id: crypto.randomUUID(),
+      id: generateId(),
       title: "Alquiler / Hipoteca",
       amount: 0,
       date: new Date().toISOString().split('T')[0],
@@ -44,7 +46,7 @@ export const initialData = {
   ],
   needs: [
     {
-      id: crypto.randomUUID(),
+      id: generateId(),
       title: "Renovar calzado hija",
       description: "Zapatillas de deporte talla 28",
       cost: 40,
@@ -57,7 +59,7 @@ export const initialData = {
   ],
   goals: [
     {
-      id: crypto.randomUUID(),
+      id: generateId(),
       title: "Mejorar salud física",
       reason: "Tener más energía para jugar con mi hija y longevidad.",
       category: "Salud",
@@ -74,7 +76,7 @@ export const initialData = {
   ],
   shoppingList: [
     {
-      id: crypto.randomUUID(),
+      id: generateId(),
       product: "Leche entera",
       quantity: "6 bricks",
       price: 6.50,
@@ -117,7 +119,7 @@ export const initialData = {
   
   alicantePlans: [
     {
-      id: crypto.randomUUID(),
+      id: generateId(),
       name: "Parque La Marjal",
       zone: "Playa San Juan",
       type: "Parque / Naturaleza",
@@ -131,7 +133,7 @@ export const initialData = {
       notes: "Ideal para pasear y ver patos. Muy seguro para niños."
     },
     {
-      id: crypto.randomUUID(),
+      id: generateId(),
       name: "MACA (Museo de Arte Contemporáneo)",
       zone: "Casco Antiguo",
       type: "Cultura",
@@ -148,7 +150,7 @@ export const initialData = {
   
   shoppingListPro: [
     {
-      id: crypto.randomUUID(),
+      id: generateId(),
       item: "Leche",
       category: "Lácteos",
       amount: "6 packs",

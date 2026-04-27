@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { generateId } from "../utils";
 import Card from "../components/Card";
 import { 
   Trophy, 
@@ -48,7 +49,7 @@ export default function Goals({ data, setData }) {
 
   const handleAddGoal = () => {
     setEditingGoal({
-      id: crypto.randomUUID(),
+      id: generateId(),
       title: "",
       reason: "",
       category: "Personal",
@@ -97,7 +98,7 @@ export default function Goals({ data, setData }) {
   const addMiniAction = () => {
     const title = prompt("Nombre de la mini-acción:");
     if (title && title.trim()) {
-      const newActions = [...editingGoal.miniActions, { id: crypto.randomUUID(), title: title.trim(), done: false }];
+      const newActions = [...editingGoal.miniActions, { id: generateId(), title: title.trim(), done: false }];
       // Auto-calcular progreso basado en acciones
       const progress = Math.round((newActions.filter(a => a.done).length / newActions.length) * 100);
       setEditingGoal({ ...editingGoal, miniActions: newActions, progress });

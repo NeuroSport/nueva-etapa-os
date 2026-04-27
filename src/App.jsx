@@ -27,6 +27,7 @@ import SundayReview from './pages/SundayReview';
 import Diary from './pages/Diary';
 import Settings from './pages/Settings';
 import AIAssistant from './pages/AIAssistant';
+import LocalAIConfig from './pages/LocalAIConfig';
 
 // PRO Pages
 import ProDashboard from './pages/ProDashboard.jsx';
@@ -96,6 +97,7 @@ function App() {
       case 'sunday-review': return <SundayReview {...props} />;
       case 'diary': return <Diary {...props} />;
       case 'assistant': return <AIAssistant {...props} />;
+      case 'local-ai-config': return <LocalAIConfig {...props} />;
       case 'settings': return <Settings {...props} darkMode={darkMode} setDarkMode={setDarkMode} setIsLocked={setIsLocked} />;
       
       // PRO Routes

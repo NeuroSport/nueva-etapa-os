@@ -1,5 +1,8 @@
-import { Calendar } from "lucide-react";
+import { useState } from "react";
+import { Calendar, ShoppingBag, Baby, DollarSign } from "lucide-react";
 import CalendarQuickAdd from "../../components/CalendarQuickAdd";
+import Card from "../../components/Card";
+import { generateId } from "../../utils";
 
 export default function WeeklyMenuPro({ data, setData }) {
   const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
@@ -46,7 +49,7 @@ export default function WeeklyMenuPro({ data, setData }) {
       const menu = data.weeklyMenuPro[day];
       if (menu.lunch) {
         newItems.push({
-          id: crypto.randomUUID(),
+          id: generateId(),
           item: `Ingredientes para: ${menu.lunch}`,
           category: "Supermercado",
           amount: "1",
@@ -57,7 +60,7 @@ export default function WeeklyMenuPro({ data, setData }) {
       }
       if (menu.dinner) {
         newItems.push({
-          id: crypto.randomUUID(),
+          id: generateId(),
           item: `Ingredientes para: ${menu.dinner}`,
           category: "Supermercado",
           amount: "1",

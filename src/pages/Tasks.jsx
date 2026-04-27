@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { generateId } from "../utils";
 import Card from "../components/Card";
 import { 
   Plus, 
@@ -68,7 +69,7 @@ export default function Tasks({ data, setData }) {
 
   const handleAddTask = () => {
     setEditingTask({
-      id: crypto.randomUUID(),
+      id: generateId(),
       title: "",
       description: "",
       category: "Personal",
@@ -143,7 +144,7 @@ export default function Tasks({ data, setData }) {
     if (title) {
       setEditingTask({
         ...editingTask,
-        subtasks: [...editingTask.subtasks, { id: crypto.randomUUID(), title, done: false }]
+        subtasks: [...editingTask.subtasks, { id: generateId(), title, done: false }]
       });
     }
   };

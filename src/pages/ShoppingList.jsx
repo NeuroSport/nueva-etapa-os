@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { generateId } from "../utils";
 import Card from "../components/Card";
 import { 
   ShoppingCart, 
@@ -44,7 +45,7 @@ export default function ShoppingList({ data, setData }) {
 
   const handleAddItem = () => {
     setEditingItem({
-      id: crypto.randomUUID(),
+      id: generateId(),
       product: "",
       quantity: "1",
       price: "",

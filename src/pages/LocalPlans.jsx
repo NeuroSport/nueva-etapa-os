@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { generateId } from "../utils";
 import Card from "../components/Card";
 import { 
   MapPin, 
@@ -42,7 +43,7 @@ export default function LocalPlans({ data, setData }) {
 
   const handleAddPlan = () => {
     setEditingPlan({
-      id: crypto.randomUUID(),
+      id: generateId(),
       name: "",
       zone: "",
       type: "Ocio",

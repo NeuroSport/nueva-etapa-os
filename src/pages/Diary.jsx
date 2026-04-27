@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { generateId } from "../utils";
 import Card from "../components/Card";
 
 export default function Diary({ data, setData }) {
@@ -13,7 +14,7 @@ export default function Diary({ data, setData }) {
       diary: [
         ...data.diary,
         {
-          id: crypto.randomUUID(),
+          id: generateId(),
           text,
           energy,
           date: new Date().toLocaleDateString("es-ES")

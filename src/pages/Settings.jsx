@@ -144,6 +144,14 @@ export default function Settings({
             onChange={(e) => handleSaveUrl(e.target.value)}
             placeholder="http://192.168.1.XX:3001/api/ia"
           />
+          <button 
+            className="local-ai-btn" 
+            onClick={() => setPage('local-ai-config')}
+            style={{ marginTop: '15px', width: '100%', padding: '12px', borderRadius: '12px', background: '#ecfdf5', color: '#059669', border: '1px solid #10b981', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+          >
+            <Smartphone size={18} />
+            Configurar IA Interna (On-Device)
+          </button>
         </div>
       </Card>
 

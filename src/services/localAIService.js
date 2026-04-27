@@ -1,0 +1,73 @@
+import * as webllm from "@mlc-ai/web-llm";
+
+/**
+ * Service to handle On-Device AI using WebLLM
+ * This runs locally in the browser/mobile GPU
+ */
+
+const SELECTED_MODEL = "Llama-3-8B-Instruct-v0.1-q4f32_1-MLC"; 
+// Note: For mobile, maybe Gemma-2b-it-q4f32_1-MLC is better (smaller)
+const DEFAULT_MODEL = "gemma-2b-it-q4f32_1-MLC"; 
+
+class LocalAIService {
+  constructor() {
+    this.engine = null;
+    this.statusCallback = null;
+    this.isLoaded = false;
+    this.isLoading = false;
+  }
+
+  setCallback(callback) {
+    this.statusCallback = callback;
+  }
+
+  async initialize(modelId = DEFAULT_MODEL) {
+    if (this.isLoaded || this.isLoading) return;
+    
+    this.isLoading = true;
+    try {
+      this.engine = await webllm.CreateMLCEngine(modelId, {
+        initProgressCallback: (report) => {
+          if (this.statusCallback) this.statusCallback(report.text);
+          console.log("Loading Progress:", report.text);
+        },
+      });
+      this.isLoaded = true;
+      this.isLoading = false;
+    } catch (error) {
+      this.isLoading = false;
+      console.error("Failed to load Local AI:", error);
+      throw error;
+    }
+  }
+
+  async generate(messages, onUpdate) {
+    if (!this.isLoaded) {
+      throw new Error("El modelo de IA local no ha sido cargado.");
+    }
+
+    try {
+      const chunks = await this.engine.chat.completions.create({
+        messages,
+        stream: true,
+      });
+
+      let fullReply = "";
+      for await (const chunk of chunks) {
+        const content = chunk.choices[0]?.delta?.content || "";
+        fullReply += content;
+        if (onUpdate) onUpdate(fullReply);
+      }
+      return fullReply;
+    } catch (error) {
+      console.error("Local AI Inference Error:", error);
+      throw error;
+    }
+  }
+
+  getLoaded() {
+    return this.isLoaded;
+  }
+}
+
+export const localAI = new LocalAIService();

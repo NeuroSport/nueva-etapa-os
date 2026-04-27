@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { generateId } from "../utils";
 import Card from "../components/Card";
 import { 
   Plus, 
@@ -91,7 +92,7 @@ export default function Economy({ data, setData }) {
 
   const handleAddItem = () => {
     const newItem = activeTab === "expenses" ? {
-      id: crypto.randomUUID(),
+      id: generateId(),
       title: "",
       amount: "",
       date: formatLocalDate(new Date()),
@@ -104,7 +105,7 @@ export default function Economy({ data, setData }) {
       priority: "Media",
       description: ""
     } : {
-      id: crypto.randomUUID(),
+      id: generateId(),
       title: "",
       amount: "",
       date: formatLocalDate(new Date()),

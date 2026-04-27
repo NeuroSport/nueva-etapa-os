@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { generateId } from '../utils';
 import { X, Calendar as CalendarIcon, Clock, Star, AlertTriangle, Save } from 'lucide-react';
 
 const CATEGORIES = {
@@ -27,7 +28,7 @@ const CalendarQuickAdd = ({
   defaultNotes = "" 
 }) => {
   const [event, setEvent] = useState({
-    id: crypto.randomUUID(),
+    id: generateId(),
     title: defaultTitle,
     description: defaultDescription,
     date: new Date().toISOString().split('T')[0],
@@ -57,7 +58,7 @@ const CalendarQuickAdd = ({
 
       setEvent(prev => ({
         ...prev,
-        id: crypto.randomUUID(),
+        id: generateId(),
         title: defaultTitle,
         description: defaultDescription,
         category: category,
