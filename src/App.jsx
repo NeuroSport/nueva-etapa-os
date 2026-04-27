@@ -28,6 +28,7 @@ import Diary from './pages/Diary';
 import Settings from './pages/Settings';
 import AIAssistant from './pages/AIAssistant';
 import LocalAIConfig from './pages/LocalAIConfig';
+import { localAI } from './services/localAIService';
 
 // PRO Pages
 import ProDashboard from './pages/ProDashboard.jsx';
@@ -47,6 +48,11 @@ function App() {
   const [isLocked, setIsLocked] = useState(!!localStorage.getItem("app_pin_hash"));
   const [showSearch, setShowSearch] = useState(false);
   const [toasts, setToasts] = useState([]);
+
+  // Auto-init Local AI if previously installed
+  useEffect(() => {
+    localAI.autoInit();
+  }, []);
 
   // Persistence of page
   useEffect(() => {

@@ -29,15 +29,30 @@ class LocalAIService {
       this.engine = await webllm.CreateMLCEngine(modelId, {
         initProgressCallback: (report) => {
           if (this.statusCallback) this.statusCallback(report.text);
-          console.log("Loading Progress:", report.text);
+          // Detectar si el modelo ya está en caché por el texto del reporte
+          if (report.text.includes("Finish loading")) {
+            localStorage.setItem("local_ai_installed", "true");
+          }
         },
       });
       this.isLoaded = true;
       this.isLoading = false;
+      localStorage.setItem("local_ai_installed", "true");
     } catch (error) {
       this.isLoading = false;
       console.error("Failed to load Local AI:", error);
       throw error;
+    }
+  }
+
+  async autoInit() {
+    if (localStorage.getItem("local_ai_installed") === "true" && !this.isLoaded && !this.isLoading) {
+      console.log("Auto-initializing Local AI from cache...");
+      try {
+        await this.initialize();
+      } catch (e) {
+        console.warn("Auto-init failed, likely WebGPU not ready yet.");
+      }
     }
   }
 
