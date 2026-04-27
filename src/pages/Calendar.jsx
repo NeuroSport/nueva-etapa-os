@@ -1,6 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { generateId } from "../utils";
 import Card from "../components/Card";
+import WeekOptimizerModal from "../components/WeekOptimizerModal";
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -22,7 +23,11 @@ import {
   Users,
   AlertTriangle,
   X,
-  CalendarDays
+  CalendarDays,
+  Target,
+  Sparkles,
+  ArrowRight,
+  ArrowLeft
 } from "lucide-react";
 
 const CATEGORIES = {
@@ -45,6 +50,13 @@ export default function Calendar({ data, setData }) {
   const [editingEvent, setEditingEvent] = useState(null);
   const [filterCat, setFilterCat] = useState("Todas");
   const [filterStatus, setFilterStatus] = useState("Todos");
+  const [showOptimizer, setShowOptimizer] = useState(false);
+
+  useEffect(() => {
+    const handleOpenOptimizer = () => setShowOptimizer(true);
+    window.addEventListener('openWeekOptimizer', handleOpenOptimizer);
+    return () => window.removeEventListener('openWeekOptimizer', handleOpenOptimizer);
+  }, []);
 
   // Utilidades de fecha seguras (evitan desfases UTC)
   const formatLocalDate = (date) => {
@@ -131,6 +143,98 @@ export default function Calendar({ data, setData }) {
     setShowModal(false);
   };
 
+  // Lógica Drag & Drop
+  const handleDragStart = (e, event) => {
+    if (event.source !== 'pro') {
+      e.preventDefault();
+      return;
+    }
+    e.dataTransfer.setData("text/plain", event.id);
+    e.target.style.opacity = "0.5";
+  };
+
+  const handleDragEnd = (e) => {
+    e.target.style.opacity = "1";
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.currentTarget.classList.add('drag-over');
+  };
+
+  const handleDragLeave = (e) => {
+    e.currentTarget.classList.remove('drag-over');
+  };
+
+  const handleDrop = (e, targetDate) => {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over');
+    
+    const eventId = e.dataTransfer.getData("text/plain");
+    if (!eventId) return;
+
+    const events = data.calendarEvents || [];
+    const eventToMove = events.find(ev => ev.id === eventId);
+    
+    if (eventToMove && eventToMove.date !== targetDate) {
+      setData({
+        ...data,
+        calendarEvents: events.map(ev => ev.id === eventId ? { ...ev, date: targetDate } : ev)
+      });
+    }
+  };
+
+  // Lógica Optimización IA
+  const applyAISuggestion = (sugg) => {
+    let events = [...(data.calendarEvents || [])];
+    
+    if (sugg.type === 'move_event') {
+      const idx = events.findIndex(e => e.id === sugg.eventId);
+      if (idx !== -1) {
+        events[idx] = { ...events[idx], date: sugg.toDate, startTime: sugg.newStartTime || events[idx].startTime, endTime: sugg.newEndTime || events[idx].endTime };
+      }
+    } else {
+      let newEvent = {
+        id: generateId(), title: sugg.title || 'Evento IA', date: sugg.date, startTime: sugg.startTime || '10:00', endTime: sugg.endTime || '11:00',
+        category: 'Personal', priority: 'Media', important: false, completed: false, notes: sugg.reason, source: 'pro'
+      };
+
+      if (sugg.type === 'schedule_task') {
+        newEvent.category = 'Trabajo'; newEvent.important = true; newEvent.sourceType = 'task'; newEvent.sourceId = sugg.taskId;
+      } else if (sugg.type === 'add_daughter_plan') {
+        newEvent.category = 'Hija'; newEvent.important = true; newEvent.title = sugg.title || 'Plan Hija';
+      } else if (sugg.type === 'add_budget_reminder') {
+        newEvent.category = 'Economía'; newEvent.important = true; newEvent.title = sugg.title || 'Aviso Economía';
+      }
+      
+      events.push(newEvent);
+    }
+    
+    setData({ ...data, calendarEvents: events });
+  };
+
+  const applyAllAISuggestions = (suggestions) => {
+    let events = [...(data.calendarEvents || [])];
+    
+    suggestions.forEach(sugg => {
+      if (sugg.type === 'move_event') {
+        const idx = events.findIndex(e => e.id === sugg.eventId);
+        if (idx !== -1) {
+          events[idx] = { ...events[idx], date: sugg.toDate, startTime: sugg.newStartTime || events[idx].startTime, endTime: sugg.newEndTime || events[idx].endTime };
+        }
+      } else {
+        let newEvent = { id: generateId(), title: sugg.title || 'Evento IA', date: sugg.date, startTime: sugg.startTime || '10:00', endTime: sugg.endTime || '11:00', category: 'Personal', priority: 'Media', important: false, completed: false, notes: sugg.reason, source: 'pro' };
+        if (sugg.type === 'schedule_task') { newEvent.category = 'Trabajo'; newEvent.important = true; newEvent.sourceType = 'task'; newEvent.sourceId = sugg.taskId; }
+        else if (sugg.type === 'add_daughter_plan') { newEvent.category = 'Hija'; newEvent.important = true; newEvent.title = sugg.title || 'Plan Hija'; }
+        else if (sugg.type === 'add_budget_reminder') { newEvent.category = 'Economía'; newEvent.important = true; newEvent.title = sugg.title || 'Aviso Economía'; }
+        events.push(newEvent);
+      }
+    });
+    
+    setData({ ...data, calendarEvents: events });
+  };
+
+
   // Lógica de semana: Obtener lunes a domingo
   const getWeekDays = (date) => {
     const start = new Date(date);
@@ -194,7 +298,13 @@ export default function Calendar({ data, setData }) {
           const isToday = formatLocalDate(new Date()) === dateKey;
 
           return (
-            <div key={idx} className={`week-day-card ${isToday ? 'today' : ''}`}>
+            <div 
+              key={idx} 
+              className={`week-day-card ${isToday ? 'today' : ''}`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, dateKey)}
+            >
               <div className="day-info">
                 <div className="day-name">
                   <span>{day.toLocaleDateString('es-ES', { weekday: 'short' })}</span>
@@ -214,8 +324,12 @@ export default function Calendar({ data, setData }) {
                   <div 
                     key={ev.id} 
                     className="mini-event-row" 
+                    draggable={ev.source === 'pro'}
+                    onDragStart={(e) => handleDragStart(e, ev)}
+                    onDragEnd={handleDragEnd}
                     style={{ "--cat-color": CATEGORIES[ev.category]?.color }}
                     onClick={() => { if(ev.source === 'pro') { setEditingEvent(ev); setShowModal(true); } }}
+                    title={ev.source === 'pro' ? "Puedes arrastrar este evento a otro día" : "Evento de sistema (No movible)"}
                   >
                     <span className="ev-time">{ev.startTime}</span>
                     <span className="ev-title">{ev.title}</span>
@@ -335,6 +449,24 @@ export default function Calendar({ data, setData }) {
         </div>
       </div>
 
+      <div className="ai-optimize-btn" onClick={() => setShowOptimizer(true)}>
+        <Sparkles size={18} />
+        <span>Optimizar mi semana con IA</span>
+      </div>
+
+      {/* ATAJOS DE CREACIÓN RÁPIDA (RESTAURADOS) */}
+      <div className="quick-add-shortcuts">
+        <button className="s-btn hija" onClick={() => handleAddEvent({ category: 'Hija', title: 'Día con mi hija' })}>
+          <Baby size={16} /> +Hija
+        </button>
+        <button className="s-btn pago" onClick={() => handleAddEvent({ category: 'Economía', title: 'Pago ' })}>
+          <Wallet size={16} /> +Pago
+        </button>
+        <button className="s-btn urg" onClick={() => handleAddEvent({ category: 'Urgente', priority: 'Alta', important: true })}>
+          <AlertTriangle size={16} /> +Urg
+        </button>
+      </div>
+
       <div className="quick-category-filters">
         <button className={filterCat === "Todas" ? "active" : ""} onClick={() => setFilterCat("Todas")}>Todos</button>
         {Object.keys(CATEGORIES).slice(0, 6).map(cat => (
@@ -378,10 +510,25 @@ export default function Calendar({ data, setData }) {
               />
               
               <div className="form-row">
-                <div className="field">
-                  <label>Fecha</label>
-                  <input type="date" value={editingEvent.date} onChange={e => setEditingEvent({...editingEvent, date: e.target.value})} />
+                <div className="field mobile-move-field">
+                  <label>Mover de fecha</label>
+                  <div className="move-date-wrapper">
+                    <button type="button" className="move-btn" onClick={() => {
+                      const d = new Date(editingEvent.date); d.setDate(d.getDate() - 1);
+                      setEditingEvent({...editingEvent, date: formatLocalDate(d)});
+                    }}><ArrowLeft size={14}/></button>
+                    
+                    <input type="date" className="date-main-input" value={editingEvent.date} onChange={e => setEditingEvent({...editingEvent, date: e.target.value})} />
+                    
+                    <button type="button" className="move-btn" onClick={() => {
+                      const d = new Date(editingEvent.date); d.setDate(d.getDate() + 1);
+                      setEditingEvent({...editingEvent, date: formatLocalDate(d)});
+                    }}><ArrowRight size={14}/></button>
+                  </div>
                 </div>
+              </div>
+
+              <div className="form-row">
                 <div className="field">
                   <label>Hora</label>
                   <div className="time-row">
@@ -445,6 +592,15 @@ export default function Calendar({ data, setData }) {
         .view-selector button { flex: 1; padding: 8px; border: none; background: transparent; font-size: 0.75em; font-weight: bold; border-radius: 9px; color: #64748b; }
         .view-selector button.active { background: white; color: #3b82f6; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
 
+        .ai-optimize-btn { background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: white; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 15px; border-radius: 16px; margin-bottom: 20px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 15px -3px rgba(139, 92, 246, 0.4); transition: transform 0.2s; }
+        .ai-optimize-btn:active { transform: scale(0.98); }
+
+        .quick-add-shortcuts { display: flex; gap: 10px; margin-bottom: 15px; }
+        .s-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px 5px; border-radius: 12px; border: none; color: white; font-size: 0.75em; font-weight: 800; }
+        .s-btn.hija { background: #10b981; }
+        .s-btn.pago { background: #f59e0b; }
+        .s-btn.urg { background: #ef4444; }
+
         .quick-category-filters { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 15px; }
         .quick-category-filters button { padding: 8px 16px; background: white; border: 1px solid var(--border); border-radius: 12px; font-size: 0.75em; font-weight: bold; white-space: nowrap; color: #64748b; transition: all 0.2s; }
         .quick-category-filters button.active { background: var(--active-color, #3b82f6); color: white; border-color: transparent; }
@@ -453,8 +609,10 @@ export default function Calendar({ data, setData }) {
 
         /* WEEK VIEW */
         .week-scroll-view { display: flex; flex-direction: column; gap: 15px; }
-        .week-day-card { background: white; border-radius: 20px; padding: 15px; border: 1px solid var(--border); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .week-day-card { background: white; border-radius: 20px; padding: 15px; border: 1px solid var(--border); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); transition: border-color 0.2s, background-color 0.2s; }
         .week-day-card.today { border: 2px solid #3b82f6; }
+        .week-day-card.drag-over { border: 2px dashed #8b5cf6; background: #faf5ff; }
+        
         .day-info { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
         .day-name { display: flex; flex-direction: column; line-height: 1.1; }
         .day-name span { font-size: 0.7em; text-transform: uppercase; font-weight: 800; opacity: 0.5; }
@@ -462,8 +620,9 @@ export default function Calendar({ data, setData }) {
         .day-meta { display: flex; align-items: center; gap: 8px; font-size: 0.75em; font-weight: bold; color: #64748b; }
         .add-day-btn { background: #f1f5f9; border: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
 
-        .day-events-list { display: flex; flex-direction: column; gap: 6px; }
-        .mini-event-row { display: flex; align-items: center; gap: 10px; padding: 10px; background: #f8fafc; border-radius: 10px; border-left: 4px solid var(--cat-color); cursor: pointer; }
+        .day-events-list { display: flex; flex-direction: column; gap: 6px; min-height: 20px; }
+        .mini-event-row { display: flex; align-items: center; gap: 10px; padding: 10px; background: #f8fafc; border-radius: 10px; border-left: 4px solid var(--cat-color); cursor: grab; transition: transform 0.1s; }
+        .mini-event-row:active { cursor: grabbing; transform: scale(0.98); }
         .ev-time { font-size: 0.7em; font-weight: 800; color: #3b82f6; width: 45px; }
         .ev-title { font-size: 0.85em; font-weight: 600; flex-grow: 1; }
         .no-events { font-size: 0.75em; font-style: italic; opacity: 0.4; }
@@ -483,6 +642,13 @@ export default function Calendar({ data, setData }) {
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); display: flex; align-items: flex-end; z-index: 1000; }
         .event-modal { background: white; width: 100%; padding: 25px; border-radius: 30px 30px 0 0; box-shadow: 0 -20px 25px -5px rgba(0,0,0,0.1); }
         .main-input { width: 100%; font-size: 1.5rem; font-weight: 800; border: none; border-bottom: 2px solid #f1f5f9; padding: 10px 0; margin-bottom: 20px; outline: none; }
+        
+        .mobile-move-field { background: #faf5ff; padding: 10px; border-radius: 15px; border: 1px solid #e9d5ff; grid-column: span 2; }
+        .mobile-move-field label { color: #8b5cf6 !important; }
+        .move-date-wrapper { display: flex; align-items: center; gap: 10px; }
+        .move-btn { background: #8b5cf6; color: white; border: none; border-radius: 10px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
+        .date-main-input { flex-grow: 1; border-color: #8b5cf6 !important; font-weight: 800 !important; color: #4c1d95 !important; }
+
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
         .field label { display: block; font-size: 0.7em; font-weight: 800; text-transform: uppercase; color: #94a3b8; margin-bottom: 5px; }
         .time-row { display: flex; gap: 5px; }
@@ -493,6 +659,15 @@ export default function Calendar({ data, setData }) {
         .save-btn { flex-grow: 1; background: #3b82f6; color: white; border: none; padding: 16px; border-radius: 15px; font-weight: 800; }
         .del-btn { background: #fee2e2; color: #ef4444; border: none; padding: 16px; border-radius: 15px; font-weight: 800; }
       `}</style>
+
+      {showOptimizer && (
+        <WeekOptimizerModal 
+          data={data}
+          onClose={() => setShowOptimizer(false)}
+          onApplySuggestion={applyAISuggestion}
+          onApplyAll={applyAllAISuggestions}
+        />
+      )}
     </div>
   );
 }

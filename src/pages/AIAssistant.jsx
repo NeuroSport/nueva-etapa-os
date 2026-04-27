@@ -247,6 +247,20 @@ export default function AIAssistant({ data, setData }) {
         <ChevronRight size={20} />
       </div>
 
+      <div className="ai-optimize-promo" onClick={() => {
+        setPage('calendar');
+        setTimeout(() => window.dispatchEvent(new CustomEvent('openWeekOptimizer')), 100);
+      }}>
+        <div className="promo-text">
+          <Target size={20} fill="#8b5cf6" color="#8b5cf6" />
+          <div>
+            <strong>Optimizar mi semana</strong>
+            <span>La IA ajusta tu carga de trabajo actual</span>
+          </div>
+        </div>
+        <ChevronRight size={20} />
+      </div>
+
       <div className="ai-search-promo" onClick={() => setPage('search')}>
         <div className="promo-text">
           <Search size={20} fill="#3b82f6" color="#3b82f6" />
@@ -426,6 +440,14 @@ export default function AIAssistant({ data, setData }) {
         .promo-text { display: flex; align-items: center; gap: 12px; }
         .promo-text strong { display: block; font-size: 0.9em; color: #4338ca; }
         .promo-text span { font-size: 0.75em; opacity: 0.6; }
+
+        .ai-optimize-promo {
+          background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 18px;
+          padding: 15px; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between;
+          cursor: pointer; transition: all 0.2s;
+        }
+        .ai-optimize-promo:active { transform: scale(0.98); background: #f3e8ff; }
+        .ai-optimize-promo strong { color: #6d28d9; }
 
         .ai-search-promo {
           background: #eff6ff; border: 1px solid #dbeafe; border-radius: 18px;
