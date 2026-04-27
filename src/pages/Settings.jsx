@@ -8,6 +8,7 @@ export default function Settings({
   setFontSize,
   darkMode,
   setDarkMode,
+  setPage,
   data,
   setData,
   setIsLocked
