@@ -13,11 +13,13 @@ import {
   BookOpen,
   Settings,
   Sparkles,
-  Rocket
+  Rocket,
+  Search
 } from "lucide-react";
 
 const items = [
   { id: "dashboard", label: "Hoy", icon: Home },
+  { id: "search", label: "Buscar", icon: Search },
   { id: "calendar", label: "Agenda", icon: CalendarDays },
   { id: "daughter", label: "Hija", icon: Heart },
   { id: "tasks", label: "Tareas", icon: CheckSquare },

@@ -19,7 +19,8 @@ import {
   ClipboardList,
   Target,
   Zap,
-  ChevronRight
+  ChevronRight,
+  Search
 } from "lucide-react";
 
 import CalendarQuickAdd from "../components/CalendarQuickAdd";
@@ -246,6 +247,17 @@ export default function AIAssistant({ data, setData }) {
         <ChevronRight size={20} />
       </div>
 
+      <div className="ai-search-promo" onClick={() => setPage('search')}>
+        <div className="promo-text">
+          <Search size={20} fill="#3b82f6" color="#3b82f6" />
+          <div>
+            <strong>Buscador Inteligente de Vida</strong>
+            <span>Encuentra planes reales en Alicante hoy</span>
+          </div>
+        </div>
+        <ChevronRight size={20} />
+      </div>
+
       <div className="control-grid">
         {controlButtons.map((btn) => (
           <button 
@@ -414,6 +426,13 @@ export default function AIAssistant({ data, setData }) {
         .promo-text { display: flex; align-items: center; gap: 12px; }
         .promo-text strong { display: block; font-size: 0.9em; color: #4338ca; }
         .promo-text span { font-size: 0.75em; opacity: 0.6; }
+
+        .ai-search-promo {
+          background: #eff6ff; border: 1px solid #dbeafe; border-radius: 18px;
+          padding: 15px; margin-bottom: 25px; display: flex; align-items: center; justify-content: space-between;
+          cursor: pointer; transition: all 0.2s;
+        }
+        .ai-search-promo:active { transform: scale(0.98); background: #dbeafe; }
       `}</style>
 
       {showAIPlanner && (

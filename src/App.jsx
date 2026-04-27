@@ -28,6 +28,7 @@ import Diary from './pages/Diary';
 import Settings from './pages/Settings';
 import AIAssistant from './pages/AIAssistant';
 import LocalAIConfig from './pages/LocalAIConfig';
+import SmartSearch from './pages/SmartSearch';
 import { localAI } from './services/localAIService';
 
 // PRO Pages
@@ -105,6 +106,7 @@ function App() {
       case 'assistant': return <AIAssistant {...props} />;
       case 'local-ai-config': return <LocalAIConfig {...props} />;
       case 'settings': return <Settings {...props} darkMode={darkMode} setDarkMode={setDarkMode} setIsLocked={setIsLocked} />;
+      case 'search': return <SmartSearch {...props} />;
       
       // PRO Routes
       case 'pro': return <ProDashboard {...props} />;

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { generateId } from "../utils";
 import Card from "../components/Card";
-import { Zap, ShieldCheck, TrendingUp, Calendar, Heart, Wallet, Plus, CheckSquare, Euro, Star, Sparkles } from "lucide-react";
+import { Zap, ShieldCheck, TrendingUp, Calendar, Heart, Wallet, Plus, CheckSquare, Euro, Star, Sparkles, Search } from "lucide-react";
 import AIWeekPlanner from "../components/AIWeekPlanner";
 
 export default function Dashboard({ data, setData, setPage, showToast }) {
@@ -95,6 +95,20 @@ export default function Dashboard({ data, setData, setPage, showToast }) {
         <div className="hero-action-outline">Organizar</div>
       </div>
 
+      {/* BOTÓN BUSCADOR INTELIGENTE */}
+      <div className="search-hero-dash" onClick={() => setPage('search')}>
+        <div className="hero-content">
+          <div className="search-icon-bg">
+            <Search size={24} color="white" />
+          </div>
+          <div className="hero-text">
+            <h2>Buscador de Vida Real</h2>
+            <p>Encuentra qué hacer hoy en Alicante.</p>
+          </div>
+        </div>
+        <div className="hero-action-minimal">Explorar</div>
+      </div>
+
       <div className="stats-mini-grid">
         <div className="mini-card" onClick={() => setPage('tasks')}>
           <div className="val">{pendingTasks.length}</div>
@@ -164,6 +178,15 @@ export default function Dashboard({ data, setData, setPage, showToast }) {
         }
         .ai-icon-bg { background: rgba(255,255,255,0.2); width: 45px; height: 45px; border-radius: 14px; display: flex; align-items: center; justify-content: center; }
         .hero-action-outline { border: 1px solid rgba(255,255,255,0.5); padding: 8px 15px; border-radius: 12px; font-size: 0.75em; font-weight: bold; }
+
+        .search-hero-dash { 
+          background: white; border: 1px solid var(--border);
+          color: var(--text); padding: 20px; border-radius: 28px; display: flex; 
+          align-items: center; justify-content: space-between; margin-bottom: 25px; 
+          cursor: pointer; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        }
+        .search-icon-bg { background: #3b82f6; width: 45px; height: 45px; border-radius: 14px; display: flex; align-items: center; justify-content: center; }
+        .hero-action-minimal { color: #3b82f6; font-weight: bold; font-size: 0.8em; }
       `}</style>
       
       {showAIPlanner && (
