@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { generateId } from "../utils";
 import Card from "../components/Card";
-import { Zap, ShieldCheck, TrendingUp, Calendar, Heart, Wallet, Plus, CheckSquare, Euro, Star } from "lucide-react";
+import { Zap, ShieldCheck, TrendingUp, Calendar, Heart, Wallet, Plus, CheckSquare, Euro, Star, Sparkles } from "lucide-react";
+import AIWeekPlanner from "../components/AIWeekPlanner";
 
 export default function Dashboard({ data, setData, setPage, showToast }) {
   const [quickTask, setQuickTask] = useState("");
+  const [showAIPlanner, setShowAIPlanner] = useState(false);
   const pendingTasks = data.tasks.filter((task) => task.status !== 'hecho');
   const totalExpenses = data.expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
@@ -79,6 +81,20 @@ export default function Dashboard({ data, setData, setPage, showToast }) {
         <div className="hero-action">Activar</div>
       </div>
 
+      {/* BOTÓN IA PLANIFICADOR SEMANAL */}
+      <div className="ai-planner-hero" onClick={() => setShowAIPlanner(true)}>
+        <div className="hero-content">
+          <div className="ai-icon-bg">
+            <Sparkles size={24} color="white" fill="white" />
+          </div>
+          <div className="hero-text">
+            <h2>Planificador Semanal PRO</h2>
+            <p>IA analiza tu economía, tareas e hija.</p>
+          </div>
+        </div>
+        <div className="hero-action-outline">Organizar</div>
+      </div>
+
       <div className="stats-mini-grid">
         <div className="mini-card" onClick={() => setPage('tasks')}>
           <div className="val">{pendingTasks.length}</div>
@@ -139,7 +155,25 @@ export default function Dashboard({ data, setData, setPage, showToast }) {
         .dash-task-item span { font-size: 0.95em; color: #334155; }
         
         .empty-msg { text-align: center; padding: 20px 0; color: #94a3b8; font-size: 0.9em; }
+
+        .ai-planner-hero { 
+          background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); 
+          color: white; padding: 20px; border-radius: 28px; display: flex; 
+          align-items: center; justify-content: space-between; margin-bottom: 25px; 
+          cursor: pointer; box-shadow: 0 15px 30px -5px rgba(99, 102, 241, 0.3);
+        }
+        .ai-icon-bg { background: rgba(255,255,255,0.2); width: 45px; height: 45px; border-radius: 14px; display: flex; align-items: center; justify-content: center; }
+        .hero-action-outline { border: 1px solid rgba(255,255,255,0.5); padding: 8px 15px; border-radius: 12px; font-size: 0.75em; font-weight: bold; }
       `}</style>
+      
+      {showAIPlanner && (
+        <AIWeekPlanner 
+          data={data} 
+          setData={setData} 
+          onClose={() => setShowAIPlanner(false)} 
+          showToast={showToast}
+        />
+      )}
     </div>
   );
 }

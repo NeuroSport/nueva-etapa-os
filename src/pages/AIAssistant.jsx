@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 
 import CalendarQuickAdd from "../components/CalendarQuickAdd";
+import AIWeekPlanner from "../components/AIWeekPlanner";
 
 export default function AIAssistant({ data, setData }) {
   const [messages, setMessages] = useState([
@@ -33,6 +34,7 @@ export default function AIAssistant({ data, setData }) {
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showAIPlanner, setShowAIPlanner] = useState(false);
   const [error, setError] = useState(null);
   const scrollRef = useRef(null);
 
@@ -233,6 +235,17 @@ export default function AIAssistant({ data, setData }) {
         <p>Analizando todos tus módulos en tiempo real</p>
       </div>
 
+      <div className="ai-plan-promo" onClick={() => setShowAIPlanner(true)}>
+        <div className="promo-text">
+          <Sparkles size={20} fill="#6366f1" color="#6366f1" />
+          <div>
+            <strong>Planificador Semanal PRO</strong>
+            <span>Genera tu semana completa en 1 click</span>
+          </div>
+        </div>
+        <ChevronRight size={20} />
+      </div>
+
       <div className="control-grid">
         {controlButtons.map((btn) => (
           <button 
@@ -391,7 +404,26 @@ export default function AIAssistant({ data, setData }) {
           .control-btn { padding: 10px 5px; }
           .control-btn .icon-box { width: 35px; height: 35px; }
         }
+
+        .ai-plan-promo {
+          background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 18px;
+          padding: 15px; margin-bottom: 25px; display: flex; align-items: center; justify-content: space-between;
+          cursor: pointer; transition: all 0.2s;
+        }
+        .ai-plan-promo:active { transform: scale(0.98); background: #ede9fe; }
+        .promo-text { display: flex; align-items: center; gap: 12px; }
+        .promo-text strong { display: block; font-size: 0.9em; color: #4338ca; }
+        .promo-text span { font-size: 0.75em; opacity: 0.6; }
       `}</style>
+
+      {showAIPlanner && (
+        <AIWeekPlanner 
+          data={data} 
+          setData={setData} 
+          onClose={() => setShowAIPlanner(false)} 
+          showToast={() => {}} // Pass actual toast if available
+        />
+      )}
     </div>
   );
 }
