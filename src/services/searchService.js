@@ -28,9 +28,12 @@ export const searchService = {
   async analyzeIntent(query, filters) {
     const prompt = `
       Analiza esta búsqueda de ocio en Alicante: "${query}".
-      Filtros: ${JSON.stringify(filters)}.
+      Filtros actuales: ${JSON.stringify(filters)}.
+      
+      Categorías Overpass válidas: "park", "museum", "restaurant", "beach", "route" (senderismo), "entertainment" (cine/ocio interior), "generic".
+      
       Identifica:
-      1. 'overpassType': "park", "museum", "restaurant", "beach", o "generic" (para monumentos/atracciones).
+      1. 'overpassType': La categoría más cercana.
       2. 'radius': en metros (ej: 5000 para capital, 30000 para provincia).
       3. 'budget': "gratis", "barato", "medio".
       
@@ -43,21 +46,24 @@ export const searchService = {
       if (localAI.getLoaded()) {
         aiResponse = await localAI.generate([{ role: "user", content: prompt }]);
       } else {
-        // Fallback rápido si IA no cargó
-        aiResponse = '{"overpassType": "generic", "radius": 10000, "budget": "medio"}';
+        aiResponse = await chatWithAI([{ role: "user", content: prompt }]);
       }
       
       const match = aiResponse.match(/\{[\s\S]*\}/);
       if (match) return JSON.parse(match[0]);
       throw new Error("Formato IA inválido");
     } catch (e) {
-      console.warn("Fallo análisis de intención, usando default:", e);
-      return { overpassType: "generic", radius: 10000, budget: filters.budget || "medio" };
+      console.warn("Fallo análisis de intención, usando heurística:", e);
+      let type = "generic";
+      if (query.toLowerCase().includes("parque") || query.toLowerCase().includes("niño")) type = "park";
+      if (query.toLowerCase().includes("comer") || query.toLowerCase().includes("restaurante")) type = "restaurant";
+      if (query.toLowerCase().includes("museo") || query.toLowerCase().includes("cultura")) type = "museum";
+      return { overpassType: type, radius: filters.zone === 'Alicante Capital' ? 8000 : 25000, budget: filters.budget || "medio" };
     }
   },
 
-  async fetchOverpass(intent) {
-    const cacheKey = `overpass_${intent.overpassType}_${intent.radius}`;
+  async fetchOverpass(intent, filters) {
+    const cacheKey = `overpass_${intent.overpassType}_${intent.radius}_${filters.weather}`;
     const cached = localStorage.getItem(cacheKey);
     if (cached) {
       const parsedCache = JSON.parse(cached);
@@ -66,96 +72,88 @@ export const searchService = {
       }
     }
 
-    let nodeQuery = `node["tourism"="attraction"]`;
-    if (intent.overpassType === 'park') nodeQuery = `node["leisure"="park"]`;
-    if (intent.overpassType === 'museum') nodeQuery = `node["tourism"="museum"]`;
-    if (intent.overpassType === 'restaurant') nodeQuery = `node["amenity"="restaurant"]`;
-    if (intent.overpassType === 'beach') nodeQuery = `node["natural"="beach"]`;
+    let osmQueries = [];
+    switch (intent.overpassType) {
+      case 'park': osmQueries = [`node["leisure"="park"]`, `node["leisure"="playground"]`]; break;
+      case 'museum': osmQueries = [`node["tourism"="museum"]`, `node["tourism"="gallery"]`]; break;
+      case 'restaurant': osmQueries = [`node["amenity"="restaurant"]`, `node["amenity"="cafe"]`]; break;
+      case 'beach': osmQueries = [`node["natural"="beach"]`]; break;
+      case 'route': osmQueries = [`way["route"="hiking"]`, `node["tourism"="viewpoint"]`]; break;
+      case 'entertainment': osmQueries = [`node["amenity"="cinema"]`, `node["amenity"="theatre"]`]; break;
+      default: osmQueries = [`node["tourism"="attraction"]`, `node["historic"]`];
+    }
 
-    // Radio centrado en Alicante
-    const query = `
-      [out:json][timeout:5];
-      (
-        ${nodeQuery}(around:${intent.radius},${ALICANTE_COORDS.lat},${ALICANTE_COORDS.lon});
-      );
-      out body 15;
-    `;
+    const queryBody = osmQueries.map(q => `${q}(around:${intent.radius},${ALICANTE_COORDS.lat},${ALICANTE_COORDS.lon});`).join('\n');
+    const query = `[out:json][timeout:15]; (${queryBody}); out center 50;`;
 
-    const url = "https://overpass-api.de/api/interpreter";
     try {
-      const res = await fetch(url, {
+      const res = await fetch("https://overpass-api.de/api/interpreter", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded"
-        },
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: `data=${encodeURIComponent(query)}`
       });
-      if (!res.ok) throw new Error("Overpass devolvió error");
+      if (!res.ok) throw new Error("Overpass Error " + res.status);
       const data = await res.json();
-      
-      localStorage.setItem(cacheKey, JSON.stringify({ time: Date.now(), data: data.elements }));
-      return data.elements;
+      const elements = (data.elements || []).sort(() => Math.random() - 0.5);
+      localStorage.setItem(cacheKey, JSON.stringify({ time: Date.now(), data: elements }));
+      return elements;
     } catch (error) {
       console.error("Overpass falló:", error);
-      return []; // Fallback empty
+      return []; 
     }
   },
 
   formatOverpassResults(elements, intent, weather, filters) {
-    return elements.map(el => {
-      const name = el.tags?.name || "Lugar sin nombre";
-      
-      // Estimar precio
-      let price = "Gratis";
-      if (intent.budget === "barato" || intent.overpassType === 'restaurant') price = "Económico (Precio estimado)";
-      if (intent.budget === "medio") price = "Pago Medio";
+    return elements
+      .filter(el => (el.tags?.name || el.tags?.["name:es"]))
+      .map(el => {
+        const name = el.tags?.name || el.tags?.["name:es"] || "Lugar interesante";
+        let price = "Gratis / Público";
+        let isVerified = false;
+        if (el.tags?.fee === "yes") { price = "De Pago"; isVerified = true; }
+        if (el.tags?.fee === "no") { price = "Gratis"; isVerified = true; }
+        
+        const isIndoor = el.tags?.indoor === "yes" || el.tags?.covered === "yes" || 
+                         ['museum', 'gallery', 'cinema', 'theatre', 'restaurant', 'cafe'].includes(intent.overpassType);
 
-      return {
-        id: el.id,
-        title: name,
-        description: `Encontrado vía satélite. Categoría: ${intent.overpassType}. ${weather.isRaining && filters.indoor ? 'Sugerido por ser apto para lluvia.' : ''}`,
-        location: "Alicante",
-        municipality: "Alicante",
-        type: intent.overpassType === "generic" ? "Atracción" : intent.overpassType,
-        priceLevel: price,
-        indoor: intent.overpassType === "museum" || intent.overpassType === "restaurant",
-        suitableForKids: filters.withKid,
-        duration: "1.5h - 2h",
-        source: "OpenStreetMap",
-        lat: el.lat,
-        lon: el.lon,
-        suggestedTime: "11:00"
-      };
-    }).filter(el => el.title !== "Lugar sin nombre").slice(0, 5); // Max 5
+        return {
+          id: el.id,
+          title: name,
+          description: el.tags?.description || el.tags?.note || `Lugar real en Alicante: ${name}.`,
+          location: el.tags?.["addr:street"] || "Alicante",
+          municipality: el.tags?.["addr:city"] || "Alicante",
+          type: el.tags?.tourism || el.tags?.amenity || el.tags?.leisure || "Punto de interés",
+          priceLevel: price,
+          isPriceVerified: isVerified,
+          indoor: isIndoor,
+          suitableForKids: el.tags?.["backcountry"] !== "yes" && (el.tags?.playground || filters.withKid),
+          duration: intent.overpassType === 'route' ? "3h+" : "1-2h",
+          source: "OpenStreetMap",
+          lat: el.lat || el.center?.lat,
+          lon: el.lon || el.center?.lon,
+          suggestedTime: "11:00"
+        };
+      })
+      .slice(0, 10);
   },
 
   async search(query, filters, localDataFallback, onProgress) {
-    console.log("🔍 Buscador Real Iniciado:", { query, filters });
-    
-    // 1. Clima
     if (onProgress) onProgress("Consultando clima...");
     const weather = await this.getWeather();
-    
-    // 2. Intención IA
-    if (onProgress) onProgress("Filtrando con IA...");
+    if (onProgress) onProgress("Analizando intención con IA...");
     const intent = await this.analyzeIntent(query, filters);
+    if (onProgress) onProgress(`Buscando ${intent.overpassType} reales...`);
+    const elements = await this.fetchOverpass(intent, filters);
     
-    // 3. API Geográfica
-    if (onProgress) onProgress("Buscando lugares reales en OpenStreetMap...");
-    const elements = await this.fetchOverpass(intent);
-    
-    // 4. Formatear y decidir Fallback
     if (elements.length > 0) {
+      if (onProgress) onProgress("Procesando resultados reales...");
       return this.formatOverpassResults(elements, intent, weather, filters);
     } else {
-      if (onProgress) onProgress("Usando datos locales seguros...");
-      // FALLBACK LOCAL
-      const fallbacks = localDataFallback || [];
-      return fallbacks.slice(0, 3).map(f => ({
+      if (onProgress) onProgress("Sin resultados reales. Usando datos locales...");
+      return (localDataFallback || []).slice(0, 5).map(f => ({
         ...f,
         source: "AlicantePlans Local",
-        description: f.notes || f.description,
-        location: f.zone || f.location,
+        isLocalFallback: true,
         priceLevel: f.priceCategory || "Gratis"
       }));
     }

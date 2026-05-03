@@ -39,7 +39,12 @@ export default function AIWeekPlanResult({ plan, onApply }) {
 
   const handleApply = () => {
     const eventsToCreate = [];
+    const tasksToCreate = [];
+    const daughterPlansToCreate = [];
+    const expensesToCreate = [];
+
     plan.days.forEach((day, dIdx) => {
+      // 1. Bloques de calendario
       day.blocks.forEach((block, bIdx) => {
         if (selectedEvents[`${dIdx}-${bIdx}`]) {
           const [start, end] = (block.time || "09:00-10:00").split("-");
@@ -57,8 +62,56 @@ export default function AIWeekPlanResult({ plan, onApply }) {
           });
         }
       });
+
+      // 2. Tareas secundarias
+      if (day.tasks) {
+        day.tasks.forEach(tTitle => {
+          tasksToCreate.push({
+            id: `task-plan-${Math.random().toString(36).substr(2, 9)}`,
+            title: tTitle,
+            status: 'pendiente',
+            priority: 'media',
+            plannedDate: day.date,
+            category: 'General'
+          });
+        });
+      }
+
+      // 3. Planes Hija
+      if (day.daughter) {
+        day.daughter.forEach(dTitle => {
+          daughterPlansToCreate.push({
+            id: `daughter-plan-${Math.random().toString(36).substr(2, 9)}`,
+            title: dTitle,
+            date: day.date,
+            category: 'Ocio',
+            cost: '0€',
+            status: 'Idea'
+          });
+        });
+      }
+
+      // 4. Economía (Gastos previstos)
+      if (day.economy) {
+        day.economy.forEach(eText => {
+          expensesToCreate.push({
+            id: `expense-plan-${Math.random().toString(36).substr(2, 9)}`,
+            title: eText,
+            amount: "0", // El usuario deberá editarlo
+            date: day.date,
+            category: 'Otros',
+            paid: false
+          });
+        });
+      }
     });
-    onApply(eventsToCreate);
+
+    onApply({
+      events: eventsToCreate,
+      tasks: tasksToCreate,
+      daughterPlans: daughterPlansToCreate,
+      expenses: expensesToCreate
+    });
   };
 
   return (

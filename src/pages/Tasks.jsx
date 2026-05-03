@@ -2,32 +2,43 @@ import { useState, useMemo } from "react";
 import { generateId } from "../utils";
 import Card from "../components/Card";
 import { 
-  Plus, 
-  CheckCircle, 
-  Circle, 
-  Clock, 
-  Calendar, 
-  Filter, 
-  Trash2, 
-  AlertTriangle, 
-  MoreVertical,
-  ChevronRight,
-  ListTodo,
-  Timer,
-  RefreshCcw,
-  X,
-  PlayCircle
+  Plus, CheckCircle, Circle, Clock, Calendar, Filter, Trash2, 
+  AlertTriangle, MoreVertical, ChevronRight, ListTodo, Timer, 
+  RefreshCcw, X, PlayCircle, Sparkles, Send
 } from "lucide-react";
+import { chatWithAI } from "../services/aiService";
+import { aiActionEngine } from "../services/aiActionEngine";
+import AIActionReviewModal from "../components/AIActionReviewModal";
 
 const CATEGORIES = ["Trabajo", "Hija", "Personal", "Hogar", "Salud", "Otros"];
 const PRIORITIES = ["Baja", "Media", "Alta"];
 const STATUSES = ["pendiente", "en proceso", "hecho"];
 
-import CalendarQuickAdd from "../components/CalendarQuickAdd";
-
-export default function Tasks({ data, setData }) {
-  const [view, setView] = useState("all"); // all, today
+export default function Tasks({ data, setData, showToast }) {
+  const [view, setView] = useState("all"); 
   const [showModal, setShowModal] = useState(false);
+  const [aiInput, setAiInput] = useState("");
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [reviewAction, setReviewAction] = useState(null);
+
+  const handleAiTask = async () => {
+    if (!aiInput.trim()) return;
+    setIsAiLoading(true);
+    const prompt = `Crea una tarea desde: "${aiInput}". Devuelve JSON type "create_task". Hoy es ${aiActionEngine.getTodayStr()}.`;
+    try {
+      const response = await chatWithAI([{ role: "user", content: prompt }]);
+      const parsed = aiActionEngine.parseResponse(response);
+      if (parsed.actions.length > 0) setReviewAction(parsed.actions[0]);
+      else showToast("No se entendió la tarea", "error");
+    } catch (e) { showToast("Error de IA", "error"); }
+    finally { setIsAiLoading(false); setAiInput(""); }
+  };
+
+  const executeAction = (action) => {
+    aiActionEngine.applyAction(action, data, setData);
+    showToast("Tarea aplicada", "success");
+    setReviewAction(null);
+  };
   const [editingTask, setEditingTask] = useState(null);
   const [filterCat, setFilterCat] = useState("Todas");
   const [sortBy, setSortBy] = useState("priority");
@@ -168,9 +179,25 @@ export default function Tasks({ data, setData }) {
 
   return (
     <div className="page tasks-page page-transition">
-      <div className="section-header">
+      <div className="tasks-header">
         <h1>Gestión de Tareas</h1>
-        <button className="add-main" onClick={handleAddTask}><Plus /></button>
+        <p>Organiza tu día con ayuda de la IA</p>
+      </div>
+
+      <div className="ai-input-container">
+        <div className="ai-input-box">
+          <Sparkles size={18} className="ai-spark" />
+          <input 
+            type="text" 
+            placeholder="IA: Crea una tarea para mañana..." 
+            value={aiInput}
+            onChange={e => setAiInput(e.target.value)}
+            onKeyPress={e => e.key === 'Enter' && handleAiTask()}
+          />
+          <button className="ai-send-btn" onClick={handleAiTask} disabled={isAiLoading}>
+            {isAiLoading ? <RefreshCcw size={18} className="animate-spin" /> : <Send size={18} />}
+          </button>
+        </div>
       </div>
 
       <div className="chips-container">
@@ -423,6 +450,31 @@ export default function Tasks({ data, setData }) {
         .modal-actions { display: flex; gap: 10px; }
         .save-btn { flex-grow: 1; background: var(--primary); color: white; border: none; padding: 15px; border-radius: 12px; font-weight: bold; }
         .del-btn { background: #fee2e2; color: #ef4444; border: none; padding: 15px; border-radius: 12px; font-weight: bold; }
+      `}</style>
+      {reviewAction && (
+        <AIActionReviewModal 
+          action={reviewAction}
+          onApply={executeAction}
+          onClose={() => setReviewAction(null)}
+        />
+      )}
+
+      <style>{`
+        .ai-input-container { margin-bottom: 20px; }
+        .ai-input-box {
+          display: flex; align-items: center; gap: 10px; background: white;
+          padding: 8px 15px; border-radius: 18px; border: 1px solid #e2e8f0;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .ai-spark { color: #8b5cf6; }
+        .ai-input-box input { flex-grow: 1; border: none; outline: none; font-size: 0.9em; background: transparent; }
+        .ai-send-btn { background: #1e293b; color: white; border: none; width: 36px; height: 36px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+        .animate-spin { animation: spin 2s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        
+        .tasks-header { margin-bottom: 15px; }
+        .tasks-header h1 { font-size: 1.5rem; margin: 0; color: var(--text); }
+        .tasks-header p { font-size: 0.85em; opacity: 0.6; margin-top: 5px; }
       `}</style>
     </div>
   );

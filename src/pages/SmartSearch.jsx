@@ -3,9 +3,11 @@ import Card from '../components/Card';
 import { generateId } from '../utils';
 import { 
   Search, MapPin, Baby, Euro, CloudRain, Sun, 
-  Clock, Calendar, Star, Brain, Navigation, ChevronRight, X, Heart, Map, Sparkles
+  Clock, Calendar, Star, Brain, Navigation, ChevronRight, X, Heart, Map, Sparkles,
+  ClipboardList, AlertCircle
 } from 'lucide-react';
 import { searchService } from '../services/searchService';
+import { aiActionEngine } from '../services/aiActionEngine';
 
 export default function SmartSearch({ data, setData, showToast }) {
   const [query, setQuery] = useState("");
@@ -43,39 +45,27 @@ export default function SmartSearch({ data, setData, showToast }) {
     }
   };
 
-  const scheduleEvent = (item) => {
-    const newEvent = {
-      id: generateId(),
+  const applyAction = (type, item) => {
+    const payload = {
       title: item.title,
-      date: new Date().toISOString().split('T')[0],
-      startTime: item.suggestedTime || "11:00",
-      endTime: "13:00",
-      category: "Ocio",
-      notes: `${item.description}\nUbicación: ${item.location}\nFuente: ${item.source || 'IA'}`,
-      important: false,
-      completed: false,
-      source: 'search'
+      description: item.description,
+      location: item.location,
+      lat: item.lat,
+      lon: item.lon,
+      category: item.type,
+      date: new Date().toISOString().split('T')[0], // Fallback inicial
     };
-    setData({ ...data, calendarEvents: [...(data.calendarEvents || []), newEvent] });
-    showToast("Añadido al calendario", "success");
-  };
 
-  const saveFavorite = (item) => {
-    const saved = data.savedPlans || [];
-    if (saved.find(p => p.id === item.id || p.title === item.title)) {
-      showToast("Este plan ya está en favoritos", "info");
-      return;
+    if (type === 'calendar') {
+      aiActionEngine.applyAction({ type: 'create_calendar_event', payload }, data, setData);
+      showToast("Evento programado", "success");
+    } else if (type === 'task') {
+      aiActionEngine.applyAction({ type: 'create_task', payload }, data, setData);
+      showToast("Tarea creada", "success");
+    } else if (type === 'daughter') {
+      aiActionEngine.applyAction({ type: 'create_daughter_plan', payload }, data, setData);
+      showToast("Añadido a planes con hija", "success");
     }
-    
-    const newSaved = {
-      ...item,
-      id: item.id || generateId(),
-      savedAt: new Date().toISOString().split('T')[0],
-      favorite: true
-    };
-    
-    setData({ ...data, savedPlans: [...saved, newSaved] });
-    showToast("Guardado en favoritos", "success");
   };
 
   const openMap = (lat, lon) => {
@@ -92,14 +82,14 @@ export default function SmartSearch({ data, setData, showToast }) {
   return (
     <div className="page smart-search-page page-transition">
       <div className="search-hero">
-        <div className="ia-badge">IA RECOMENDACIÓN ACTIVA</div>
+        <div className="ia-badge">IA EXPLORACIÓN REAL ALICANTE</div>
         <h1>🔎 Buscador de Vida</h1>
-        <p>Encuentra qué hacer hoy en Alicante según tu realidad.</p>
+        <p>Encuentra lugares reales. Nada de datos inventados.</p>
         
         <div className="search-bar-container">
           <input 
             type="text" 
-            placeholder="Ej: plan con mi hija el sábado..." 
+            placeholder="Ej: parque con columpios cerca de mi..." 
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyPress={e => e.key === 'Enter' && handleSearch()}
@@ -123,7 +113,7 @@ export default function SmartSearch({ data, setData, showToast }) {
           </button>
           
           <button className={`f-pill ${filters.weather === 'lluvia' ? 'active' : ''}`} onClick={() => setFilters({...filters, weather: filters.weather === 'lluvia' ? 'sol' : 'lluvia'})}>
-            {filters.weather === 'lluvia' ? <CloudRain size={14} /> : <Sun size={14} />} {filters.weather === 'lluvia' ? 'Interior / Apto Lluvia' : 'Cualquiera / Exterior'}
+            {filters.weather === 'lluvia' ? <CloudRain size={14} /> : <Sun size={14} />} {filters.weather === 'lluvia' ? 'Apto Lluvia' : 'Todo / Exterior'}
           </button>
           
           <select className="f-select" value={filters.budget} onChange={e => setFilters({...filters, budget: e.target.value})}>
@@ -132,12 +122,6 @@ export default function SmartSearch({ data, setData, showToast }) {
             <option value="medio">Presupuesto Medio</option>
           </select>
 
-          <select className="f-select" value={filters.duration} onChange={e => setFilters({...filters, duration: e.target.value})}>
-            <option value="corta">Corta (1-2h)</option>
-            <option value="media">Media (Medio día)</option>
-            <option value="larga">Larga (Día completo)</option>
-          </select>
-          
           <select className="f-select" value={filters.type} onChange={e => setFilters({...filters, type: e.target.value})}>
             <option value="ocio">Cualquier Ocio</option>
             <option value="parque">Parque / Naturaleza</option>
@@ -162,7 +146,7 @@ export default function SmartSearch({ data, setData, showToast }) {
         {isSearching && (
           <div className="searching-state">
             <Brain className="pulse-icon" size={40} color="#6366f1" />
-            <p>{searchStatus || "La IA está rastreando opciones para ti..."}</p>
+            <p>{searchStatus || "La IA está rastreando opciones reales..."}</p>
           </div>
         )}
 
@@ -170,34 +154,47 @@ export default function SmartSearch({ data, setData, showToast }) {
           <Card key={i}>
             <div className="res-card">
               <div className="res-header">
-                <h3>{res.title}</h3>
-                <span className="res-type">{res.type}</span>
+                <div className="res-title-group">
+                  <h3>{res.title}</h3>
+                  <div className="res-meta-line">
+                    <span className="res-source-tag">{res.source}</span>
+                    <span className="res-type-tag">{res.type}</span>
+                  </div>
+                </div>
+                {res.lat && res.lon && (
+                  <button className="mini-map-btn" onClick={() => openMap(res.lat, res.lon)}>
+                    <Map size={18} />
+                  </button>
+                )}
               </div>
+              
               <p className="res-desc">{res.description}</p>
               
               <div className="res-meta-tags">
-                <div className="meta-tag"><MapPin size={12} /> {res.location}</div>
+                <div className="meta-tag"><MapPin size={12} /> {res.location || "Alicante"}</div>
                 <div className="meta-tag"><Euro size={12} /> {res.priceLevel}</div>
-                <div className="meta-tag"><Clock size={12} /> {res.duration}</div>
                 {res.suitableForKids && <div className="meta-tag"><Baby size={12} /> Niños ✓</div>}
-                {res.indoor && <div className="meta-tag"><CloudRain size={12} /> Interior ✓</div>}
+                {res.indoor && <div className="meta-tag"><CloudRain size={12} /> Interior</div>}
               </div>
 
-              <div className="res-source">
-                Fuente de datos: <strong>{res.source || 'IA'}</strong>
-              </div>
+              {!res.verified && (
+                <div className="verification-warning">
+                  <AlertCircle size={12} /> Horario/Precio no verificado hoy
+                </div>
+              )}
               
-              <div className="res-actions">
-                <button className="btn-save" onClick={() => saveFavorite(res)}>
-                  <Heart size={16} /> Guardar
+              <div className="res-actions-grid">
+                <button className="btn-action-light" onClick={() => saveFavorite(res)}>
+                  <Heart size={14} /> Favorito
                 </button>
-                {res.lat && res.lon && (
-                  <button className="btn-map" onClick={() => openMap(res.lat, res.lon)}>
-                    <Map size={16} /> Mapa
-                  </button>
-                )}
-                <button className="btn-plan" onClick={() => scheduleEvent(res)}>
-                  <Calendar size={16} /> Programar
+                <button className="btn-action-light" onClick={() => applyAction('calendar', res)}>
+                  <Calendar size={14} /> Calendario
+                </button>
+                <button className="btn-action-light" onClick={() => applyAction('task', res)}>
+                  <ClipboardList size={14} /> Tarea
+                </button>
+                <button className="btn-action-light" onClick={() => applyAction('daughter', res)}>
+                  <Star size={14} /> Plan Hija
                 </button>
               </div>
             </div>
@@ -207,10 +204,11 @@ export default function SmartSearch({ data, setData, showToast }) {
         {results.length === 0 && !isSearching && (
           <div className="search-placeholder">
             <Sparkles size={48} opacity={0.2} />
-            <p>Escribe qué te apetece o usa un acceso rápido.</p>
+            <p>Escribe qué buscas o usa un acceso rápido.</p>
           </div>
         )}
       </div>
+
 
       <style>{`
         .smart-search-page { padding: 15px; padding-bottom: 90px; }
@@ -246,21 +244,25 @@ export default function SmartSearch({ data, setData, showToast }) {
 
         .res-card { display: flex; flex-direction: column; gap: 12px; }
         .res-header { display: flex; justify-content: space-between; align-items: flex-start; }
-        .res-header h3 { margin: 0; font-size: 1.1rem; color: #1e293b; font-weight: 800; }
-        .res-type { font-size: 0.6em; background: #e0f2fe; padding: 4px 10px; border-radius: 8px; font-weight: 900; color: #0369a1; text-transform: uppercase; }
+        .res-title-group h3 { margin: 0; font-size: 1.1rem; color: #1e293b; font-weight: 800; }
+        .res-meta-line { display: flex; gap: 8px; margin-top: 4px; }
+        .res-source-tag { font-size: 0.6em; background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-weight: bold; color: #64748b; }
+        .res-type-tag { font-size: 0.6em; background: #e0f2fe; padding: 2px 8px; border-radius: 4px; font-weight: 800; color: #0369a1; text-transform: uppercase; }
+        
+        .mini-map-btn { background: #e0f2fe; color: #0284c7; border: none; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
         .res-desc { font-size: 0.85em; margin: 0; line-height: 1.4; color: #475569; }
         
         .res-meta-tags { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px; background: #f8fafc; border-radius: 12px; }
         .meta-tag { display: flex; align-items: center; gap: 4px; font-size: 0.7em; font-weight: 700; color: #64748b; background: white; padding: 4px 8px; border-radius: 6px; border: 1px solid #e2e8f0; }
         
-        .res-source { font-size: 0.65em; text-align: right; color: #94a3b8; font-style: italic; }
+        .verification-warning { display: flex; align-items: center; gap: 6px; font-size: 0.65em; color: #f59e0b; font-weight: bold; padding: 0 5px; }
         
-        .res-actions { display: flex; gap: 8px; margin-top: 5px; }
-        .res-actions button { flex: 1; padding: 12px 5px; border-radius: 12px; border: none; font-size: 0.75em; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s; cursor: pointer; }
-        .btn-save { background: #fce7f3; color: #db2777; }
-        .btn-map { background: #e0f2fe; color: #0284c7; }
-        .btn-plan { background: #1e293b; color: white; box-shadow: 0 4px 12px rgba(30, 41, 59, 0.2); }
-        .btn-plan:active { transform: scale(0.95); }
+        .res-actions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 5px; }
+        .btn-action-light { 
+          padding: 10px; border-radius: 12px; border: 1px solid #e2e8f0; background: white; 
+          font-size: 0.75em; font-weight: bold; color: #475569; display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-action-light:active { background: #f1f5f9; }
 
         .search-placeholder { text-align: center; padding: 80px 20px; opacity: 0.3; }
         .spinner-small { width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }

@@ -2,31 +2,43 @@ import { useState, useMemo } from "react";
 import { generateId } from "../utils";
 import Card from "../components/Card";
 import { 
-  Trophy, 
-  Plus, 
-  CheckCircle, 
-  Circle, 
-  Target, 
-  Calendar, 
-  TrendingUp, 
-  AlertOctagon, 
-  X,
-  ChevronRight,
-  ClipboardList,
-  Sparkles,
-  MoreVertical,
-  Flag
+  Trophy, Plus, CheckCircle, Circle, Target, Calendar, TrendingUp, 
+  AlertOctagon, X, ChevronRight, ClipboardList, Sparkles, 
+  MoreVertical, Flag, Send, RefreshCcw
 } from "lucide-react";
+import { chatWithAI } from "../services/aiService";
+import { aiActionEngine } from "../services/aiActionEngine";
+import AIActionReviewModal from "../components/AIActionReviewModal";
 
 const CATEGORIES = ["Salud", "Trabajo", "Finanzas", "Hija", "Personal", "Otros"];
 const STATUSES = ["En curso", "Pausado", "Logrado"];
 
-import CalendarQuickAdd from "../components/CalendarQuickAdd";
-
-export default function Goals({ data, setData }) {
+export default function Goals({ data, setData, showToast }) {
   const [showModal, setShowModal] = useState(false);
   const [editingGoal, setEditingGoal] = useState(null);
   const [filterCat, setFilterCat] = useState("Todas");
+  const [aiInput, setAiInput] = useState("");
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [reviewAction, setReviewAction] = useState(null);
+
+  const handleAiGoal = async () => {
+    if (!aiInput.trim()) return;
+    setIsAiLoading(true);
+    const prompt = `Crea un objetivo estratégico desde: "${aiInput}". Devuelve JSON type "create_goal". Hoy es ${aiActionEngine.getTodayStr()}.`;
+    try {
+      const response = await chatWithAI([{ role: "user", content: prompt }]);
+      const parsed = aiActionEngine.parseResponse(response);
+      if (parsed.actions.length > 0) setReviewAction(parsed.actions[0]);
+      else showToast("No se pudo crear el objetivo", "error");
+    } catch (e) { showToast("Error IA", "error"); }
+    finally { setIsAiLoading(false); setAiInput(""); }
+  };
+
+  const executeAction = (action) => {
+    aiActionEngine.applyAction(action, data, setData);
+    showToast("Objetivo guardado", "success");
+    setReviewAction(null);
+  };
 
   // Estado para el modal de programación rápida
   const [showQuickAdd, setShowQuickAdd] = useState(false);
@@ -148,10 +160,26 @@ export default function Goals({ data, setData }) {
   return (
     <div className="page goals-page">
       <div className="section-header pro-header">
-        <h1>SISTEMA ESTRATÉGICO DE METAS v2.0</h1>
+        <h1>SISTEMA ESTRATÉGICO DE METAS v2.5</h1>
         <div className="stat-pill">
           <Trophy size={16} />
           <span>{data.goals.filter(g => g.status === 'Logrado').length} Logrados</span>
+        </div>
+      </div>
+
+      <div className="ai-input-container">
+        <div className="ai-input-box">
+          <Sparkles size={18} className="ai-spark" />
+          <input 
+            type="text" 
+            placeholder="IA: Quiero correr una maratón en 6 meses..." 
+            value={aiInput}
+            onChange={e => setAiInput(e.target.value)}
+            onKeyPress={e => e.key === 'Enter' && handleAiGoal()}
+          />
+          <button className="ai-send-btn" onClick={handleAiGoal} disabled={isAiLoading}>
+            {isAiLoading ? <RefreshCcw size={18} className="animate-spin" /> : <Send size={18} />}
+          </button>
         </div>
       </div>
 
@@ -397,6 +425,27 @@ export default function Goals({ data, setData }) {
         .modal-actions { display: flex; gap: 10px; margin-top: 25px; }
         .save-btn { flex-grow: 1; background: var(--primary); color: white; border: none; padding: 15px; border-radius: 12px; font-weight: bold; }
         .del-btn { background: #fee2e2; color: #ef4444; border: none; padding: 15px; border-radius: 12px; font-weight: bold; }
+      `}</style>
+      {reviewAction && (
+        <AIActionReviewModal 
+          action={reviewAction}
+          onApply={executeAction}
+          onClose={() => setReviewAction(null)}
+        />
+      )}
+
+      <style>{`
+        .ai-input-container { margin: 0 15px 25px 15px; }
+        .ai-input-box {
+          display: flex; align-items: center; gap: 10px; background: white;
+          padding: 8px 15px; border-radius: 18px; border: 1px solid #e2e8f0;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .ai-spark { color: #8b5cf6; }
+        .ai-input-box input { flex-grow: 1; border: none; outline: none; font-size: 0.9em; background: transparent; }
+        .ai-send-btn { background: #1e293b; color: white; border: none; width: 36px; height: 36px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+        .animate-spin { animation: spin 2s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>
     </div>
   );

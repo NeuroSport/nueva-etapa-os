@@ -2,23 +2,13 @@ import { useState, useMemo } from "react";
 import { generateId } from "../utils";
 import Card from "../components/Card";
 import { 
-  Plus, 
-  ArrowUpCircle, 
-  ArrowDownCircle, 
-  Wallet, 
-  Calendar, 
-  Filter, 
-  CheckCircle, 
-  Circle, 
-  Trash2, 
-  TrendingUp, 
-  AlertCircle,
-  MoreVertical,
-  X,
-  CreditCard,
-  PiggyBank,
-  ArrowUpDown
+  Plus, ArrowUpCircle, ArrowDownCircle, Wallet, Calendar, Filter, 
+  CheckCircle, Circle, Trash2, TrendingUp, AlertCircle, 
+  MoreVertical, X, CreditCard, PiggyBank, ArrowUpDown, Sparkles, Send, RefreshCcw
 } from "lucide-react";
+import { chatWithAI } from "../services/aiService";
+import { aiActionEngine } from "../services/aiActionEngine";
+import AIActionReviewModal from "../components/AIActionReviewModal";
 
 const CATEGORIES = {
   Casa: { color: "#64748b", icon: "🏠" },
@@ -30,13 +20,35 @@ const CATEGORIES = {
   Otros: { color: "#94a3b8", icon: "📦" }
 };
 
-export default function Economy({ data, setData }) {
+export default function Economy({ data, setData, showToast }) {
   const [activeTab, setActiveTab] = useState("expenses");
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [filterCat, setFilterCat] = useState("Todas");
   const [filterStatus, setFilterStatus] = useState("Todos");
-  const [sortBy, setSortBy] = useState("date"); // date, amount, priority
+  const [sortBy, setSortBy] = useState("date");
+  const [aiInput, setAiInput] = useState("");
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [reviewAction, setReviewAction] = useState(null);
+
+  const handleAiExpense = async () => {
+    if (!aiInput.trim()) return;
+    setIsAiLoading(true);
+    const prompt = `Extrae el gasto de: "${aiInput}". Devuelve JSON type "create_expense". Hoy es ${aiActionEngine.getTodayStr()}.`;
+    try {
+      const response = await chatWithAI([{ role: "user", content: prompt }]);
+      const parsed = aiActionEngine.parseResponse(response);
+      if (parsed.actions.length > 0) setReviewAction(parsed.actions[0]);
+      else showToast("No se detectó el gasto", "error");
+    } catch (e) { showToast("Error IA", "error"); }
+    finally { setIsAiLoading(false); setAiInput(""); }
+  };
+
+  const executeAction = (action) => {
+    aiActionEngine.applyAction(action, data, setData);
+    showToast("Gasto registrado", "success");
+    setReviewAction(null);
+  };
 
   // Utilidad de fecha segura
   const formatLocalDate = (date) => {
@@ -149,6 +161,22 @@ export default function Economy({ data, setData }) {
         <h1>Control Financiero</h1>
         <div className={`status-badge ${totals.status}`}>
           {totals.status === 'green' ? 'Saludable' : totals.status === 'yellow' ? 'Precaución' : 'Alerta'}
+        </div>
+      </div>
+
+      <div className="ai-input-container">
+        <div className="ai-input-box">
+          <Sparkles size={18} className="ai-spark" />
+          <input 
+            type="text" 
+            placeholder="IA: He gastado 10€ en comida..." 
+            value={aiInput}
+            onChange={e => setAiInput(e.target.value)}
+            onKeyPress={e => e.key === 'Enter' && handleAiExpense()}
+          />
+          <button className="ai-send-btn" onClick={handleAiExpense} disabled={isAiLoading}>
+            {isAiLoading ? <RefreshCcw size={18} className="animate-spin" /> : <Send size={18} />}
+          </button>
         </div>
       </div>
 
@@ -511,6 +539,27 @@ export default function Economy({ data, setData }) {
         .modal-actions { display: flex; gap: 10px; }
         .save-btn { flex-grow: 1; background: var(--primary); color: white; border: none; padding: 15px; border-radius: 12px; font-weight: bold; }
         .del-btn { background: #fee2e2; color: #ef4444; border: none; padding: 15px; border-radius: 12px; font-weight: bold; }
+      `}</style>
+      {reviewAction && (
+        <AIActionReviewModal 
+          action={reviewAction}
+          onApply={executeAction}
+          onClose={() => setReviewAction(null)}
+        />
+      )}
+
+      <style>{`
+        .ai-input-container { margin-bottom: 20px; }
+        .ai-input-box {
+          display: flex; align-items: center; gap: 10px; background: white;
+          padding: 8px 15px; border-radius: 18px; border: 1px solid #e2e8f0;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .ai-spark { color: #8b5cf6; }
+        .ai-input-box input { flex-grow: 1; border: none; outline: none; font-size: 0.9em; background: transparent; }
+        .ai-send-btn { background: #1e293b; color: white; border: none; width: 36px; height: 36px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+        .animate-spin { animation: spin 2s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>
     </div>
   );

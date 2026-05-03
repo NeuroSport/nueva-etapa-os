@@ -90,12 +90,29 @@ export default function AIWeekPlanner({ data, setData, onClose, showToast }) {
     }
   };
 
-  const handleApply = (events) => {
-    setData({
-      ...data,
-      calendarEvents: [...(data.calendarEvents || []), ...events]
-    });
-    showToast(`${events.length} eventos añadidos al calendario`, "success");
+  const handleApply = (payload) => {
+    const { events, tasks, daughterPlans, expenses } = payload;
+    
+    const newData = { ...data };
+    
+    // 1. Calendario
+    newData.calendarEvents = [...(newData.calendarEvents || []), ...events];
+    
+    // 2. Tareas
+    newData.tasks = [...(newData.tasks || []), ...tasks];
+    
+    // 3. Hija (Planes)
+    if (!newData.daughterSystem) newData.daughterSystem = { plans: { ideas: [] }, custodyCalendar: [], responsibilities: [] };
+    if (!newData.daughterSystem.plans) newData.daughterSystem.plans = { ideas: [] };
+    newData.daughterSystem.plans.ideas = [...(newData.daughterSystem.plans.ideas || []), ...daughterPlans];
+    
+    // 4. Economía
+    newData.expenses = [...(newData.expenses || []), ...expenses];
+
+    setData(newData);
+    
+    const totalCount = events.length + tasks.length + daughterPlans.length + expenses.length;
+    showToast(`Sincronizados ${totalCount} elementos del plan semanal`, "success");
     onClose();
   };
 

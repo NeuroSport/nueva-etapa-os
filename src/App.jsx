@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import './styles.css';
 import { initialData } from './data';
-import { loadData, saveData } from './storage';
+import { dataService } from './services/DataService';
 
 // Components
 import Header from './components/Header';
@@ -43,7 +43,7 @@ import WeeklyReview from './pages/pro/WeeklyReview.jsx';
 
 
 function App() {
-  const [data, setData] = useState(() => loadData() || initialData);
+  const [data, setData] = useState(() => dataService.loadData());
   const [page, setPage] = useState(() => localStorage.getItem("last_page") || 'dashboard');
   const [darkMode, setDarkMode] = useState(false);
   const [isLocked, setIsLocked] = useState(!!localStorage.getItem("app_pin_hash"));
@@ -79,7 +79,11 @@ function App() {
   }, []);
 
   useEffect(() => {
-    saveData(data);
+    const timeout = setTimeout(() => {
+      dataService.saveData(data);
+    }, 300);
+
+    return () => clearTimeout(timeout);
   }, [data]);
 
   const handleUnlock = () => {
